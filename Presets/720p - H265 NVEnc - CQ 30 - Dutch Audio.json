@@ -5,7 +5,7 @@
       "AudioCopyMask": [],
       "AudioEncoderFallback": "ac3",
       "AudioLanguageList": [
-        "eng"
+        "nld"
       ],
       "AudioList": [
         {
@@ -66,7 +66,7 @@
       "PicturePadBottom": 0,
       "PicturePadLeft": 0,
       "PicturePadRight": 0,
-      "PresetName": "720p - H265 - CQ 30 - English Audio",
+      "PresetName": "720p - H265 NVEnc - CQ 30 - Dutch Audio",
       "Type": 1,
       "SubtitleAddCC": false,
       "SubtitleAddForeignAudioSearch": false,
@@ -75,9 +75,10 @@
       "SubtitleBurnBDSub": false,
       "SubtitleBurnDVDSub": false,
       "SubtitleLanguageList": [
-        "nld"
+        "nld",
+        "eng"
       ],
-      "SubtitleTrackSelectionBehavior": "first",
+      "SubtitleTrackSelectionBehavior": "none",
       "VideoAvgBitrate": 0,
       "VideoColorMatrixCode": 0,
       "VideoEncoder": "nvenc_h265",

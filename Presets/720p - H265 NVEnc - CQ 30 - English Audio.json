@@ -5,7 +5,7 @@
       "AudioCopyMask": [],
       "AudioEncoderFallback": "ac3",
       "AudioLanguageList": [
-        "nld"
+        "eng"
       ],
       "AudioList": [
         {
@@ -66,7 +66,7 @@
       "PicturePadBottom": 0,
       "PicturePadLeft": 0,
       "PicturePadRight": 0,
-      "PresetName": "Samsung Tablet H265 - Dutch",
+      "PresetName": "720p - H265 NVEnc - CQ 30 - English Audio",
       "Type": 1,
       "SubtitleAddCC": false,
       "SubtitleAddForeignAudioSearch": false,
@@ -75,10 +75,9 @@
       "SubtitleBurnBDSub": false,
       "SubtitleBurnDVDSub": false,
       "SubtitleLanguageList": [
-        "nld",
-        "eng"
+        "nld"
       ],
-      "SubtitleTrackSelectionBehavior": "none",
+      "SubtitleTrackSelectionBehavior": "first",
       "VideoAvgBitrate": 0,
       "VideoColorMatrixCode": 0,
       "VideoEncoder": "nvenc_h265",
