@@ -124,7 +124,7 @@ foreach ($File in $Files) {
         New-Item -ItemType Directory -Path $OutputFileFolder | Out-Null
     }
 
-    if ($File.Extension -eq '.mkv') {
+    if (($File.Extension -eq '.mkv') -or ($File.Extension -eq '.mp4')) {
         # Convert MKV files with HandBrakeCLI
         & $HandBrakeCLI --preset-import-file "$PresetFile" --preset "$PresetName" --input "$SourceFilePath" --output "$OutputFilePath"
     } elseif (-not $ConvertOnly) {
