@@ -89,7 +89,7 @@
       "VideoFramerateMode": "cfr",
       "VideoGrayScale": false,
       "VideoScaler": "swscale",
-      "VideoPreset": "fast",
+      "VideoPreset": "medium",
       "VideoTune": "",
       "VideoProfile": "auto",
       "VideoLevel": "auto",
