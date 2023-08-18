@@ -1,4 +1,4 @@
- PowerShell Video Conversion Script
+# PowerShell Video Conversion Script
 
 This PowerShell script allows you to convert video files in a source folder using HandBrakeCLI while providing options to test and adjust bit rates. The script provides a user-friendly menu interface and supports custom presets for the conversion process.
 
