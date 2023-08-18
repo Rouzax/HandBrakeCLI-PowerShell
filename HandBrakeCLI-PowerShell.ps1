@@ -219,6 +219,7 @@ while (-not $startFullEncode) {
 
     Clear-Host
     
+    Write-Host "Preset: " $PresetName
     $bitRateInfo | Format-Table -AutoSize FileName, "Source Bit Rate", "Test Bit Rate"
     $response = Read-Host "Is the Bit Rate okay? (Y/N)"
     if ($response -eq 'Y' -or $response -eq 'y') {
