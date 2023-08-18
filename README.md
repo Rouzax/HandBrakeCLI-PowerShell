@@ -1,51 +1,61 @@
-# PowerShell Script: File Conversion and Copy Utility
+ PowerShell Video Conversion Script
 
-This PowerShell script is designed to convert MKV files using HandBrakeCLI and copy non-MKV files from a source folder to an output folder. It provides flexibility in specifying the source folder, output folder, preset file, and HandBrakeCLI executable.
+This PowerShell script allows you to convert video files in a source folder using HandBrakeCLI while providing options to test and adjust bit rates. The script provides a user-friendly menu interface and supports custom presets for the conversion process.
 
 ## Prerequisites
 
-- PowerShell 5.1 or higher
-- HandBrakeCLI executable (default path: "C:\Program Files\HandBrake\HandBrakeCLI.exe")
+- PowerShell 5.1 or later
+- HandBrakeCLI installed (default path: C:\Program Files\HandBrake\HandBrakeCLI.exe)
+- FFmpeg installed (optional for testing; default path: C:\Program Files\FFmpeg\ffprobe.exe)
 
 ## Usage
 
-1. Ensure you have the required prerequisites mentioned above.
-2. Download or clone the PowerShell script from the repository.
-3. Open a PowerShell command prompt.
-4. Navigate to the directory where the script is located.
-5. Run the script using the following command:
+1. Clone or download the script to your local machine.
 
-   ```powershell
-   .\ConvertAndCopyFiles.ps1 -SourceFolder <SourceFolderPath> -OutputFolder <OutputFolderPath> [-PresetFile <PresetFilePath>] [-ConvertOnly] [-HandBrakeCLI <HandBrakeCLIPath>]
-   ```
+2. Open a PowerShell terminal and navigate to the folder containing the script.
 
-   Replace the placeholders `<SourceFolderPath>`, `<OutputFolderPath>`, `<PresetFilePath>`, and `<HandBrakeCLIPath>` with the actual paths.
+3. Run the script with the following parameters:
 
-6. If the `-PresetFile` parameter is not specified, the script will prompt you to select a preset file from the available options in the "Presets" folder located in the same directory as the script.
-7. If the `-ConvertOnly` switch is provided, the script will only convert MKV files using HandBrakeCLI. Otherwise, it will copy non-MKV files to the output folder as well.
+```powershell
+.\HandBrakeCLI-PowerShell.ps1 -SourceFolder <SourceFolderPath> -OutputFolder <OutputFolderPath> [-PresetFile <PresetFilePath>] [-ConvertOnly] [-HandBrakeCLI <HandBrakeCLIPath>] [-FFprobePath <FFprobePath>] [-TestEncode] [-TestEncodeSeconds <TestDuration>]
+```
 
-8. The script will create the output folder if it doesn't exist.
+### Parameters
 
-## Parameters
+- `SourceFolder` (mandatory): The path to the folder containing the source video files.
+- `OutputFolder` (mandatory): The path where the converted files will be saved.
+- `PresetFile` (optional): The path to a custom HandBrake preset JSON file. If not provided, a menu will prompt you to select a preset from the available options.
+- `ConvertOnly` (optional): If specified, non-MKV files will be copied to the output folder without conversion.
+- `HandBrakeCLI` (optional): The path to the HandBrakeCLI executable. If not provided, the default path will be used.
+- `FFprobePath` (optional): The path to the FFprobe executable. Required only if `TestEncode` is specified. If not provided, the default path will be used.
+- `TestEncode` (optional): If specified, the script will perform a test encode to check bit rates before the full conversion.
+- `TestEncodeSeconds` (optional): The duration (in seconds) of the test encode. Defaults to 120 seconds.
+  
+## Features
 
-- `SourceFolder`: The path to the source folder containing the files to be processed.
-- `OutputFolder`: The path to the output folder where the converted files will be stored.
-- `PresetFile` (optional): The path to the JSON preset file for HandBrakeCLI. If not specified, the script will prompt you to select a preset file from the available options.
-- `ConvertOnly` (optional): A switch parameter indicating whether to convert only or also copy non-MKV files.
-- `HandBrakeCLI` (optional): The path to the HandBrakeCLI executable. If not specified, the default path will be used.
+- Provides a menu-based interface for easy interaction.
+- Supports testing bit rates before performing a full conversion.  
+- Offers flexibility in using custom presets for different conversion settings.
+- Handles both MKV and non-MKV video files based on user preferences.
 
 ## Example
 
 Convert and copy files from "D:\Movies\Source" to "D:\Movies\Output":
 
 ```powershell
-.\ConvertAndCopyFiles.ps1 -SourceFolder "D:\Movies\Source" -OutputFolder "D:\Movies\Output"
+.\HandBrakeCLI-PowerShell.ps1 -SourceFolder "D:\Movies\Source" -OutputFolder "D:\Movies\Output"
 ```
 
 Convert MKV files only from "D:\Movies\Source" to "D:\Movies\Output":
 
 ```powershell
-.\ConvertAndCopyFiles.ps1 -SourceFolder "D:\Movies\Source" -OutputFolder "D:\Movies\Output" -ConvertOnly
+.\HandBrakeCLI-PowerShell.ps1 -SourceFolder "D:\Movies\Source" -OutputFolder "D:\Movies\Output" -ConvertOnly
+```
+
+Convert video files from the ""D:\Movies\Source" folder to the "D:\Movies\Output" folder. It will perform a 60-second test encode for bit rate evaluation.
+
+```powershell
+.\HandBrakeCLI-PowerShell.ps1 -SourceFolder "D:\Movies\Source" -OutputFolder "D:\Movies\Output" -TestEncode -TestEncodeSeconds 60
 ```
 
 ## Presets
