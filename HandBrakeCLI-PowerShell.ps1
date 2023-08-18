@@ -89,18 +89,18 @@ function Select-MenuOption {
 function Convert-BitRate($bitRate) {
     <#
     .SYNOPSIS
-    This function converts a given bit rate value into a human-readable format, including bps, kbps, and Mbps.
+    This function converts a given Bitrate value into a human-readable format, including bps, kbps, and Mbps.
     
     .DESCRIPTION
-    The Convert-BitRate function takes a bit rate value as input and converts it into a more readable format. It calculates and rounds the bit rate to kilobits per second (kbps) and megabits per second (Mbps) as appropriate, and then returns the formatted result with the corresponding unit.
+    The Convert-BitRate function takes a Bitrate value as input and converts it into a more readable format. It calculates and rounds the Bitrate to kilobits per second (kbps) and megabits per second (Mbps) as appropriate, and then returns the formatted result with the corresponding unit.
 
     .PARAMETER bitRate
-    Specifies the bit rate value that needs to be converted. It should be provided in bits per second (bps).
+    Specifies the Bitrate value that needs to be converted. It should be provided in bits per second (bps).
 
     .EXAMPLE
     Example 1:
     Convert-BitRate -bitRate 2500000
-    This example converts a bit rate of 2500000 bps into 2.50 Mbps.
+    This example converts a Bitrate of 2500000 bps into 2.50 Mbps.
     #>
     if ($null -eq $bitRate) {
         return ""
@@ -204,15 +204,15 @@ while (-not $startFullEncode) {
             # Run test encode with options
             & $HandBrakeCLI --preset-import-file "$PresetFile" --preset "$PresetName" --input "$SourceFilePath" --output "$OutputFilePath" --start-at "seconds:$startAt" --stop-at "seconds:$endAt"
         
-            # Use FFprobe to get bit rate of test encode
+            # Use FFprobe to get Bitrate of test encode
             $ffprobeTestOutput = & $FFprobePath -v error -print_format json -show_format "$OutputFilePath" | ConvertFrom-Json
             $testBitRate = $ffprobeTestOutput.format.bit_rate
             $testBitRateFormatted = Convert-BitRate $testBitRate
 
             $bitRateInfo += [PSCustomObject]@{
                 FileName          = $File.Name
-                "Source Bit Rate" = $sourceBitRateFormatted
-                "Test Bit Rate"   = $testBitRateFormatted
+                "Source Bitrate" = $sourceBitRateFormatted
+                "Test Bitrate"   = $testBitRateFormatted
             }
         }
     }
@@ -220,8 +220,8 @@ while (-not $startFullEncode) {
     Clear-Host
     
     Write-Host "Preset: " $PresetName
-    $bitRateInfo | Format-Table -AutoSize FileName, "Source Bit Rate", "Test Bit Rate"
-    $response = Read-Host "Is the Bit Rate okay? (Y/N)"
+    $bitRateInfo | Format-Table -AutoSize FileName, "Source Bitrate", "Test Bitrate"
+    $response = Read-Host "Is the Bitrate okay? (Y/N)"
     if ($response -eq 'Y' -or $response -eq 'y') {
         $startFullEncode = $true
     } elseif ($response -eq 'N' -or $response -eq 'n') {
