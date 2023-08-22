@@ -17,7 +17,7 @@ param (
     [string]$HandBrakeCLI,
 
     [Parameter()]
-    [string]$FFprobePath,
+    [string]$MediaInfocliPath,
 
     [Parameter()]
     [switch]$TestEncode,
@@ -118,6 +118,151 @@ function Convert-BitRate($bitRate) {
     }
 }
 
+# Function to extract video information using MediaInfo CLI
+function Get-VideoInfo($filePath, $MediaInfocliPath) {
+    <#
+    .SYNOPSIS
+    Retrieves detailed information about a video file using MediaInfo CLI.
+
+    .DESCRIPTION
+    This function takes a video file path and the path to the MediaInfo CLI executable as inputs.
+    It uses MediaInfo to extract information about the video, such as codec, dimensions, bitrate, and encoder.
+
+    .PARAMETER filePath
+    Specifies the path to the video file for which information needs to be extracted.
+
+    .PARAMETER MediaInfocliPath
+    Specifies the path to the MediaInfo executable.
+
+    .EXAMPLE
+    Get-VideoInfo -filePath "C:\Videos\video.mp4" -MediaInfocliPath "C:\Program Files\FFmpeg\MediaInfo.exe"
+    This example retrieves information about the video file "video.mp4" using MediaInfo.
+
+    .NOTES
+    This function requires MediaInfo to be installed on the system and the MediaInfocliPath parameter to point to its location.
+    #>
+    $MediaInfoOutput = & $MediaInfocliPath --output=JSON --Full "$filePath" | ConvertFrom-Json
+
+    $singleVideoInfo = $null
+
+    $generalTrack = $MediaInfoOutput.media.track | Where-Object { $_.'@type' -eq 'General' }
+    $videoTrack = $MediaInfoOutput.media.track | Where-Object { $_.'@type' -eq 'Video' }
+    
+    $format = $videoTrack.Format_String
+    $codec = $videoTrack.CodecID
+    $videoWidth = if ($videoTrack.Width) {
+        [int]$videoTrack.Width 
+    } else {
+        $null 
+    }
+    $videoHeight = if ($videoTrack.Height) {
+        [int]$videoTrack.Height 
+    } else {
+        $null 
+    }
+    
+    if ($videoTrack.BitRate) {
+        $rawVideoBitRate = [int]$videoTrack.BitRate
+        $videoBitRate = Convert-BitRate $rawVideoBitRate
+    } else {
+        $videoBitRate = $null
+    }
+    
+    if ($generalTrack.OverallBitRate) {
+        $rawTotalBitRate = [int]$generalTrack.OverallBitRate
+        $totalBitRate = Convert-BitRate $rawTotalBitRate
+    } else {
+        $totalBitRate = $null
+    }
+    $encodedApplication = $generalTrack.Encoded_Application_String
+    
+    # Extracting and rounding the duration
+    $rawDuration = [decimal]$videoTrack.Duration
+    $videoDuration = [math]::Floor($rawDuration)
+
+    $singleVideoInfo = [PSCustomObject]@{
+        FileName        = (Get-Item $filePath).BaseName
+        FullPath        = $filePath
+        Format          = $format
+        Codec           = $codec
+        VideoWidth      = $videoWidth
+        VideoHeight     = $videoHeight
+        VideoBitrate    = $videoBitRate
+        TotalBitrate    = $totalBitRate
+        VideoDuration   = $VideoDuration   
+        Encoder         = $encodedApplication
+        RawVideoBitrate = $rawVideoBitRate   
+        RawTotalBitrate = $rawTotalBitRate  
+    }
+    return $singleVideoInfo
+}
+
+function Merge-VideoInfo([array]$SourceVideoInfo, [array]$TargetVideoInfo) {
+    <#
+    .SYNOPSIS
+    Merges source and target video information based on the base name of the file and creates a combined list of video details.
+
+    .DESCRIPTION
+    This function takes two arrays of video information, source and target, and merges them based on the base name of the file. If a matching base name is found in both arrays, the function creates a combined object containing video details from both sources. If a base name is only present in the source array, its details are added as is. Finally, unmatched target base names are also included in the output.
+
+    .PARAMETER SourceVideoInfo
+    An array containing video information for source videos.
+
+    .PARAMETER TargetVideoInfo
+    An array containing video information for target videos.
+
+    .EXAMPLE
+    $sourceVideoInfo = @(
+        @{ "FileName" = "video1"; "Source Format" = "H.264"; "Source Video Width" = 1920; ... },
+        @{ "FileName" = "video2"; "Source Format" = "H.265"; "Source Video Width" = 1280; ... }
+    )
+
+    $targetVideoInfo = @(
+        @{ "FileName" = "video1"; "Format Codec" = "H.265"; "Target Video Width" = 1920; ... },
+        @{ "FileName" = "video3"; "Format Codec" = "H.264"; "Target Video Width" = 1280; ... }
+    )
+
+    $result = Merge-VideoInfo -SourceVideoInfo $sourceVideoInfo -TargetVideoInfo $targetVideoInfo
+
+    # This example will merge video information and create a combined list containing details from both sources.
+    #>
+
+    $allVideoInfo = @()
+
+    # Merging both tables with Source and Target video info
+    foreach ($sourceVideo in $SourceVideoInfo) {
+        $matchingTestVideo = $targetVideoInfo | Where-Object { $_.FileName -eq $sourceVideo.FileName }
+        
+        if ($matchingTestVideo) {
+            $mergedObject = [PSCustomObject]@{
+                FileName               = $sourceVideo.FileName
+                "Source Format"        = $sourceVideo."Source Format"
+                "Source Video Width"   = $sourceVideo."Source Video Width"
+                "Source Video Height"  = $sourceVideo."Source Video Height"
+                "Source Video Bitrate" = $sourceVideo."Source Video Bitrate"
+                "Source Total Bitrate" = $sourceVideo."Source Total Bitrate"
+                "Source Duration"      = $sourceVideo."Source Duration"
+                "Target Format"        = $matchingTestVideo."Target Format"
+                "Target Video Width"   = $matchingTestVideo."Target Video Width"
+                "Target Video Height"  = $matchingTestVideo."Target Video Height"
+                "Target Video Bitrate" = $matchingTestVideo."Target Video Bitrate"
+                "Target Total Bitrate" = $matchingTestVideo."Target Total Bitrate"
+                "Target Duration"      = $matchingTestVideo."Target Duration"
+            }
+            
+            $allVideoInfo += $mergedObject
+        } else {
+            $allVideoInfo += $sourceVideo
+        }
+    }
+    
+    # Include unmatched targetVideoInfo objects
+    $unmatchedtargetVideoInfo = $targetVideoInfo | Where-Object { $_.FileName -notin $SourceVideoInfo.FileName }
+    $allVideoInfo += $unmatchedtargetVideoInfo
+
+    return $allVideoInfo
+}
+
 # Set default value for $HandBrakeCLI if not provided
 if (-not $HandBrakeCLI) {
     $HandBrakeCLI = "C:\Program Files\HandBrake\HandBrakeCLI.exe"
@@ -129,16 +274,21 @@ if (-not (Test-Path -Path $HandBrakeCLI -PathType 'Leaf')) {
     Exit
 }
 
+# Set default value for $MediaInfocliPath if not provided
+if (-not $MediaInfocliPath) {
+    $MediaInfocliPath = "C:\Program Files\MediaInfo_CLI\MediaInfo.exe"
+}
+# Validate if MediaInfo.exe exists
+if (-not (Test-Path -Path $MediaInfocliPath -PathType 'Leaf')) {
+    Write-Host "MediaInfo.exe not found at the specified path: $MediaInfocliPath"
+    Exit
+}
+
 if ($TestEncode) {
-    if (-not $FFprobePath) {
-        $FFprobePath = "C:\Program Files\FFmpeg\ffprobe.exe"
-    }
-    # Validate if FFprobe.exe exists
-    if (-not (Test-Path -Path $FFprobePath -PathType 'Leaf')) {
-        Write-Host "FFprobe.exe not found at the specified path: $FFprobePath"
-        Exit
-    }
+    # Do not start the full encode yet as we need to run a small test encode
+    $startFullEncode = $false
 } else {
+    # We can directly start the entire encode
     $startFullEncode = $true
 }
 
@@ -147,7 +297,6 @@ if (-not (Test-Path -Path $OutputFolder -PathType 'Container')) {
     New-Item -ItemType Directory -Path $OutputFolder | Out-Null
     Write-Host "Created OutputFolder: $OutputFolder"
 }
-
 
 # Get input if no parameters defined, list all json presets
 if ($PSBoundParameters.ContainsKey('PresetFile')) {
@@ -164,19 +313,48 @@ $JsonContent = Get-Content -Path $PresetFile | ConvertFrom-Json
 # Get the preset name
 $PresetName = $JsonContent.PresetList[0].PresetName
 
-# Get all files in the source folder and subfolders
-$Files = Get-ChildItem -Path $SourceFolder -File -Recurse
+# Get preset extension
+$VideoExtensionPreset = ($JsonContent.PresetList[0].FileFormat).Replace("av_", ".")
 
+# Get all files in the source folder and subfolders
+$allFiles = Get-ChildItem -Path $SourceFolder -File -Recurse
+$allVideoFiles = $allFiles | Where-Object { $_.Extension -match '\.(mp4|mkv|avi|mov|wmv)$' }
+
+# Array to store bitrate information
+$sourceVideoInfo = @()
+
+# Get Source file information
+foreach ($File in $allVideoFiles) {
+    # Get the folder path and file name
+    $videoInfo = Get-VideoInfo $file.FullName $MediaInfocliPath
+  
+    $SourceVideoInfo += [PSCustomObject]@{
+        FileName               = $($videoInfo.FileName)
+        "Source Format"        = $($videoInfo.Format)
+        "Source Video Width"   = $($videoInfo.VideoWidth)
+        "Source Video Height"  = $($videoInfo.VideoHeight)
+        "Source Video Bitrate" = $($videoInfo.VideoBitrate)
+        "Source Total Bitrate" = $($videoInfo.TotalBitrate)
+        "Source Duration"      = $($videoInfo.VideoDuration)
+    }
+}
 
 while (-not $startFullEncode) {
-    # Array to store bitrate information
-    $bitRateInfo = @()
-    # Loop through each file
-    foreach ($File in $Files) {
+    # Initialize empty array 
+    $targetVideoInfo = @()
+
+    # Loop through each file and do a test encode
+    foreach ($File in $allVideoFiles) {
         # Get the folder path and file name
         $SourceFilePath = $File.FullName
         $SourceFileRelativePath = $SourceFilePath.Substring($SourceFolder.Length + 1)
+        # Create Output file path
         $OutputFilePath = Join-Path -Path $OutputFolder -ChildPath $SourceFileRelativePath
+
+        # Get the current extension
+        $currentExtension = [System.IO.Path]::GetExtension($OutputFilePath)
+        # Replace the extension with the new one
+        $OutputFilePath = $OutputFilePath -replace [regex]::Escape($currentExtension), $VideoExtensionPreset
 
         # Create the output folder if it doesn't exist
         $OutputFileFolder = Split-Path -Path $OutputFilePath
@@ -185,11 +363,17 @@ while (-not $startFullEncode) {
         }
 
         if ($TestEncode) {
-            $startFullEncode = $false
 
-            # Use FFprobe to get Source video information
-            $ffprobeOutput = & $FFprobePath -v error -print_format json -show_format -show_streams "$SourceFilePath" | ConvertFrom-Json
-            $sourceVideoDuration = [int]$ffprobeOutput.format.duration
+            # Get Source Video duration from 
+            # Define the key you want to look up
+            $lookupFileName = $File.BaseName
+            # Find the object in $allVideoInfo based on the key
+            $matchingObject = $SourceVideoInfo | Where-Object { $_.FileName -eq $lookupFileName }
+            # Get Source Video duration
+            $sourceVideoDuration = $matchingObject."Source Duration"
+            
+            # Calculate if a test encode with $TestEncodeSeconds can be done in the duration of the video, if yes pick a sample in the middle of the source video
+            # If Source duration is shorter than $TestEncodeSeconds, pick largest possible sample
             if ($sourceVideoDuration -le $TestEncodeSeconds) {
                 $startAt = 0
                 $endAt = $sourceVideoDuration
@@ -198,32 +382,41 @@ while (-not $startFullEncode) {
                 $startAt = $sourceVideoMidPoint - ($TestEncodeSeconds / 2)
                 $endAt = $TestEncodeSeconds
             }
-            $sourceBitRate = $ffprobeOutput.format.bit_rate
-            $sourceBitRateFormatted = Convert-BitRate $sourceBitRate
+
 
             # Run test encode with options
             & $HandBrakeCLI --preset-import-file "$PresetFile" --preset "$PresetName" --input "$SourceFilePath" --output "$OutputFilePath" --start-at "seconds:$startAt" --stop-at "seconds:$endAt"
         
-            # Use FFprobe to get Bitrate of test encode
-            $ffprobeTestOutput = & $FFprobePath -v error -print_format json -show_format "$OutputFilePath" | ConvertFrom-Json
-            $testBitRate = $ffprobeTestOutput.format.bit_rate
-            $testBitRateFormatted = Convert-BitRate $testBitRate
-
-            $bitRateInfo += [PSCustomObject]@{
-                FileName          = $File.Name
-                "Source Bitrate" = $sourceBitRateFormatted
-                "Test Bitrate"   = $testBitRateFormatted
+            # Get the test video details
+            $videoInfo = Get-VideoInfo $OutputFilePath $MediaInfocliPath
+    
+            $targetVideoInfo += [PSCustomObject]@{
+                FileName               = $($videoInfo.FileName)
+                "Target Format"        = $($videoInfo.Format)
+                "Target Video Width"   = $($videoInfo.VideoWidth)
+                "Target Video Height"  = $($videoInfo.VideoHeight)
+                "Target Video Bitrate" = $($videoInfo.VideoBitrate)
+                "Target Total Bitrate" = $($videoInfo.TotalBitrate)
+                "Target Duration"      = $($videoInfo.VideoDuration)
             }
         }
     }
 
+    # Initialize an empty array to store merged data
+    $allVideoInfo = @()
+    # Merging both tables with Source and Target video info
+    $allVideoInfo = Merge-VideoInfo $SourceVideoInfo $targetVideoInfo
+       
+    # Show results
     Clear-Host
-    
     Write-Host "Preset: " $PresetName
-    $bitRateInfo | Format-Table -AutoSize FileName, "Source Bitrate", "Test Bitrate"
+    $allVideoInfo | Format-Table -AutoSize FileName, "Source Format", "Target Format", "Source Total Bitrate", "Target Total Bitrate", "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height"
     $response = Read-Host "Is the Bitrate okay? (Y/N)"
     if ($response -eq 'Y' -or $response -eq 'y') {
         $startFullEncode = $true
+        
+        # Clean Target Folder
+        $null = Remove-Item -Path $OutputFolder -Recurse -Force
     } elseif ($response -eq 'N' -or $response -eq 'n') {
         # Prompt to select a different preset
         $SelectedPreset = Select-MenuOption -MenuOptions $PresetFiles -MenuQuestion "Handbrake Preset"
@@ -235,16 +428,69 @@ while (-not $startFullEncode) {
         # Get the preset name
         $PresetName = $JsonContent.PresetList[0].PresetName
 
+        # Get preset extension
+        $VideoExtensionPreset = ($JsonContent.PresetList[0].FileFormat).Replace("av_", ".")
+
+        # Clean Target Folder
+        $null = Remove-Item -Path $OutputFolder -Recurse -Force
+
         # Don't start full encode just yet
         $startFullEncode = $false
     }
 }
+
 if ($startFullEncode) {
-    if (($File.Extension -eq '.mkv') -or ($File.Extension -eq '.mp4')) {
-        # Convert MKV files with HandBrakeCLI
-        & $HandBrakeCLI --preset-import-file "$PresetFile" --preset "$PresetName" --input "$SourceFilePath" --output "$OutputFilePath"
-    } elseif (-not $ConvertOnly) {
-        # Copy non-MKV files to the output folder
-        Copy-Item -LiteralPath $SourceFilePath -Destination $OutputFilePath -Force
+    # Initialize empty array 
+    $targetVideoInfo = @()
+    # Loop through each file
+    foreach ($File in $allFiles) {
+        # Get the folder path and file name
+        $SourceFilePath = $File.FullName
+        $SourceFileRelativePath = $SourceFilePath.Substring($SourceFolder.Length + 1)
+        # Create Output file path
+        $OutputFilePath = Join-Path -Path $OutputFolder -ChildPath $SourceFileRelativePath
+
+        # Change the extension if needed on all video files
+        if ($File -in $allVideoFiles) {
+            # Get the current extension
+            $currentExtension = [System.IO.Path]::GetExtension($OutputFilePath)
+            # Replace the extension with the new one
+            $OutputFilePath = $OutputFilePath -replace [regex]::Escape($currentExtension), $VideoExtensionPreset
+        }
+
+        # Create the output folder if it doesn't exist
+        $OutputFileFolder = Split-Path -Path $OutputFilePath
+        if (-not (Test-Path -Path $OutputFileFolder -PathType 'Container')) {
+            New-Item -ItemType Directory -Path $OutputFileFolder | Out-Null
+        }
+
+        if ($File -in $allVideoFiles) {
+            # Convert MKV files with HandBrakeCLI
+            & $HandBrakeCLI --preset-import-file "$PresetFile" --preset "$PresetName" --input "$SourceFilePath" --output "$OutputFilePath"
+            # Get the test video details
+            $videoInfo = Get-VideoInfo $OutputFilePath $MediaInfocliPath
+    
+            $targetVideoInfo += [PSCustomObject]@{
+                FileName               = $($videoInfo.FileName)
+                "Target Format"        = $($videoInfo.Format)
+                "Target Video Width"   = $($videoInfo.VideoWidth)
+                "Target Video Height"  = $($videoInfo.VideoHeight)
+                "Target Video Bitrate" = $($videoInfo.VideoBitrate)
+                "Target Total Bitrate" = $($videoInfo.TotalBitrate)
+                "Target Duration"      = $($videoInfo.VideoDuration)
+            }
+        } elseif (-not $ConvertOnly) {
+            # Copy non-MKV files to the output folder
+            Copy-Item -LiteralPath $SourceFilePath -Destination $OutputFilePath -Force
+        }
     }
+    # Initialize an empty array to store merged data
+    $allVideoInfo = @()
+    # Merging both tables with Source and Target video info
+    $allVideoInfo = Merge-VideoInfo $SourceVideoInfo $targetVideoInfo
+       
+    # Show results
+    Clear-Host
+    Write-Host "Preset: " $PresetName
+    $allVideoInfo | Format-Table -AutoSize FileName, "Source Format", "Target Format", "Source Total Bitrate", "Target Total Bitrate", "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height"
 }
