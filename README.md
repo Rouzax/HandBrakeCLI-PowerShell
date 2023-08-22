@@ -1,23 +1,30 @@
 # PowerShell Video Conversion Script
 
-This PowerShell script allows you to convert video files in a source folder using HandBrakeCLI while providing options to test and adjust bit rates. The script provides a user-friendly menu interface and supports custom presets for the conversion process.
+This script is designed to automate the process of converting video files using HandBrakeCLI and MediaInfo CLI. It supports various options for source and output folders, preset selection, test encoding, and more. The script is primarily intended for Windows environments.
 
-## Prerequisites
+## Features
 
-- PowerShell 5.1 or later
-- HandBrakeCLI installed (default path: C:\Program Files\HandBrake\HandBrakeCLI.exe)
-- FFmpeg installed (optional for testing; default path: C:\Program Files\FFmpeg\ffprobe.exe)
+- Convert video files using HandBrakeCLI
+- Extract video information using MediaInfo CLI
+- Test encoding to check video quality and bitrate
+- Select presets for conversion
+- Merge source and target video information for comparison
+
+
+## Requirements
+
+- [HandBrakeCLI](https://handbrake.fr/downloads2.php)
+- [MediaInfo CLI](https://mediaarea.net/en/MediaInfo/Download)
 
 ## Usage
 
-1. Clone or download the script to your local machine.
-
-2. Open a PowerShell terminal and navigate to the folder containing the script.
-
-3. Run the script with the following parameters:
+1. Place your video files in the source folder.
+2. Run the script in PowerShell, providing the required parameters.
+3. The script will perform a test encode to ensure desired bitrates if `-TestEncode` is provided.
+4. If the test results are satisfactory, the script will perform the full conversion.
 
 ```powershell
-.\HandBrakeCLI-PowerShell.ps1 -SourceFolder <SourceFolderPath> -OutputFolder <OutputFolderPath> [-PresetFile <PresetFilePath>] [-ConvertOnly] [-HandBrakeCLI <HandBrakeCLIPath>] [-FFprobePath <FFprobePath>] [-TestEncode] [-TestEncodeSeconds <TestDuration>]
+.\HandBrakeCLI-PowerShell.ps1 -SourceFolder <SourceFolderPath> -OutputFolder <OutputFolderPath> [-PresetFile <PresetFilePath>] [-ConvertOnly] [-HandBrakeCLI <HandBrakeCLIPath>] [-FFprobePath <MediaInfocliPath>] [-TestEncode] [-TestEncodeSeconds <TestDuration>]
 ```
 
 ### Parameters
@@ -27,17 +34,10 @@ This PowerShell script allows you to convert video files in a source folder usin
 - `PresetFile` (optional): The path to a custom HandBrake preset JSON file. If not provided, a menu will prompt you to select a preset from the available options.
 - `ConvertOnly` (optional): If specified, non-MKV files will be copied to the output folder without conversion.
 - `HandBrakeCLI` (optional): The path to the HandBrakeCLI executable. If not provided, the default path will be used.
-- `FFprobePath` (optional): The path to the FFprobe executable. Required only if `TestEncode` is specified. If not provided, the default path will be used.
+- `MediaInfocliPath` (Optional): Path to MediaInfo CLI executable.
 - `TestEncode` (optional): If specified, the script will perform a test encode to check bit rates before the full conversion.
 - `TestEncodeSeconds` (optional): The duration (in seconds) of the test encode. Defaults to 120 seconds.
   
-## Features
-
-- Provides a menu-based interface for easy interaction.
-- Supports testing bit rates before performing a full conversion.  
-- Offers flexibility in using custom presets for different conversion settings.
-- Handles both MKV and non-MKV video files based on user preferences.
-
 ## Example
 
 Convert and copy files from "D:\Movies\Source" to "D:\Movies\Output":
