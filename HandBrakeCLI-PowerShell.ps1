@@ -63,7 +63,7 @@ function Select-MenuOption {
         $menu = @{}
         $maxWidth = [math]::Ceiling([math]::Log10($MenuOptions.Count + 1))
         for ($i = 1; $i -le $MenuOptions.count; $i++) { 
-            $indexDisplay = "$i.".PadRight($maxWidth + 1)
+            $indexDisplay = "$i.".PadRight($maxWidth + 2)
             Write-Host "$indexDisplay" -ForegroundColor Magenta -NoNewline
             Write-Host "$($MenuOptions[$i - 1])" -ForegroundColor White 
             $menu.Add($i, ($MenuOptions[$i - 1]))
