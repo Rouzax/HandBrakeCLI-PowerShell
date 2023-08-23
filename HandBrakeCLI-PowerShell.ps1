@@ -61,17 +61,18 @@ function Select-MenuOption {
     } else {
         Write-Host "`nSelect the correct $MenuQuestion" -ForegroundColor DarkCyan
         $menu = @{}
+        $maxWidth = [math]::Ceiling([math]::Log10($MenuOptions.Count + 1))
         for ($i = 1; $i -le $MenuOptions.count; $i++) { 
-            Write-Host "$i. " -ForegroundColor Magenta -NoNewline
+            $indexDisplay = "$i.".PadRight($maxWidth + 1)
+            Write-Host "$indexDisplay" -ForegroundColor Magenta -NoNewline
             Write-Host "$($MenuOptions[$i - 1])" -ForegroundColor White 
             $menu.Add($i, ($MenuOptions[$i - 1]))
-            $maxi++
         }
         do {
             try {
                 $numOk = $true
                 [int]$ans = Read-Host "Enter $MenuQuestion number to select"
-                if ($ans -lt 1 -or $ans -gt $maxi) {
+                if ($ans -lt 1 -or $ans -gt $MenuOptions.Count) {
                     $numOK = $false
                     Write-Host 'Not a valid selection' -ForegroundColor DarkRed
                 }
@@ -80,7 +81,7 @@ function Select-MenuOption {
                 Write-Host 'Please enter a number' -ForegroundColor DarkRed
             }
         } # end do 
-        until (($ans -ge 1 -and $ans -le $maxi) -and $numOK)
+        until (($ans -ge 1 -and $ans -le $MenuOptions.Count) -and $numOK)
         Return $MenuOptions[$ans - 1]
     }
 }
