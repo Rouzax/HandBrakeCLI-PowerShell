@@ -94,7 +94,7 @@
       "VideoLevel": "auto",
       "VideoOptionExtra": "",
       "VideoQualityType": 2,
-      "VideoQualitySlider": 26,
+      "VideoQualitySlider": 21,
       "VideoTwoPass": true,
       "VideoTurboTwoPass": true,
       "x264UseAdvancedOptions": false,
