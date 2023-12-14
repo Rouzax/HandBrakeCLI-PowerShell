@@ -182,7 +182,7 @@ function Get-VideoInfo($filePath, $MediaInfocliPath) {
     $videoDuration = [math]::Floor($rawDuration)
 
     $singleVideoInfo = [PSCustomObject]@{
-        FileName        = (Get-Item $filePath).BaseName
+        FileName        = (Get-Item -LiteralPath $filePath).BaseName
         FullPath        = $filePath
         Format          = $format
         Codec           = $codec
