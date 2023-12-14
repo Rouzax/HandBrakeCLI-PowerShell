@@ -416,7 +416,7 @@ while (-not $startFullEncode) {
     # Show results
     Clear-Host
     Write-Host "Preset: " $PresetName
-    $allVideoInfo | Format-Table -AutoSize FileName, "Source Format", "Target Format", "Source Total Bitrate", "Target Total Bitrate", "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height"
+    $allVideoInfo | Format-Table -AutoSize -Wrap FileName, "Source Format", "Target Format", "Source Total Bitrate", "Target Total Bitrate", "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height"
     $response = Read-Host "Is the Bitrate okay? (Y/N)"
     if ($response -eq 'Y' -or $response -eq 'y') {
         $startFullEncode = $true
