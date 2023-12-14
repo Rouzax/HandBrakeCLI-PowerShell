@@ -219,13 +219,13 @@ function Merge-VideoInfo([array]$SourceVideoInfo, [array]$TargetVideoInfo) {
 
     .EXAMPLE
     $sourceVideoInfo = @(
-        @{ "FileName" = "video1"; "Source Format" = "H.264"; "Source Video Width" = 1920; ... },
-        @{ "FileName" = "video2"; "Source Format" = "H.265"; "Source Video Width" = 1280; ... }
+        @{ "FileName" = "video1"; "S-Format" = "H.264"; "S-Video Width" = 1920; ... },
+        @{ "FileName" = "video2"; "S-Format" = "H.265"; "S-Video Width" = 1280; ... }
     )
 
     $targetVideoInfo = @(
-        @{ "FileName" = "video1"; "Format Codec" = "H.265"; "Target Video Width" = 1920; ... },
-        @{ "FileName" = "video3"; "Format Codec" = "H.264"; "Target Video Width" = 1280; ... }
+        @{ "FileName" = "video1"; "Format Codec" = "H.265"; "T-Video Width" = 1920; ... },
+        @{ "FileName" = "video3"; "Format Codec" = "H.264"; "T-Video Width" = 1280; ... }
     )
 
     $result = Merge-VideoInfo -SourceVideoInfo $sourceVideoInfo -TargetVideoInfo $targetVideoInfo
@@ -235,25 +235,25 @@ function Merge-VideoInfo([array]$SourceVideoInfo, [array]$TargetVideoInfo) {
 
     $allVideoInfo = @()
 
-    # Merging both tables with Source and Target video info
+    # Merging both tables with S-and Target video info
     foreach ($sourceVideo in $SourceVideoInfo) {
         $matchingTestVideo = $targetVideoInfo | Where-Object { $_.FileName -eq $sourceVideo.FileName }
         
         if ($matchingTestVideo) {
             $mergedObject = [PSCustomObject]@{
                 FileName               = $sourceVideo.FileName
-                "Source Format"        = $sourceVideo."Source Format"
-                "Source Video Width"   = $sourceVideo."Source Video Width"
-                "Source Video Height"  = $sourceVideo."Source Video Height"
-                "Source Video Bitrate" = $sourceVideo."Source Video Bitrate"
-                "Source Total Bitrate" = $sourceVideo."Source Total Bitrate"
-                "Source Duration"      = $sourceVideo."Source Duration"
-                "Target Format"        = $matchingTestVideo."Target Format"
-                "Target Video Width"   = $matchingTestVideo."Target Video Width"
-                "Target Video Height"  = $matchingTestVideo."Target Video Height"
-                "Target Video Bitrate" = $matchingTestVideo."Target Video Bitrate"
-                "Target Total Bitrate" = $matchingTestVideo."Target Total Bitrate"
-                "Target Duration"      = $matchingTestVideo."Target Duration"
+                "S-Format"        = $sourceVideo."S-Format"
+                "S-Video Width"   = $sourceVideo."S-Video Width"
+                "S-Video Height"  = $sourceVideo."S-Video Height"
+                "S-Video Bitrate" = $sourceVideo."S-Video Bitrate"
+                "S-Total Bitrate" = $sourceVideo."S-Total Bitrate"
+                "S-Duration"      = $sourceVideo."S-Duration"
+                "T-Format"        = $matchingTestVideo."T-Format"
+                "T-Video Width"   = $matchingTestVideo."T-Video Width"
+                "T-Video Height"  = $matchingTestVideo."T-Video Height"
+                "T-Video Bitrate" = $matchingTestVideo."T-Video Bitrate"
+                "T-Total Bitrate" = $matchingTestVideo."T-Total Bitrate"
+                "T-Duration"      = $matchingTestVideo."T-Duration"
             }
             
             $allVideoInfo += $mergedObject
@@ -336,12 +336,12 @@ foreach ($File in $allVideoFiles) {
   
     $SourceVideoInfo += [PSCustomObject]@{
         FileName               = $($videoInfo.FileName)
-        "Source Format"        = $($videoInfo.Format)
-        "Source Video Width"   = $($videoInfo.VideoWidth)
-        "Source Video Height"  = $($videoInfo.VideoHeight)
-        "Source Video Bitrate" = $($videoInfo.VideoBitrate)
-        "Source Total Bitrate" = $($videoInfo.TotalBitrate)
-        "Source Duration"      = $($videoInfo.VideoDuration)
+        "S-Format"        = $($videoInfo.Format)
+        "S-Video Width"   = $($videoInfo.VideoWidth)
+        "S-Video Height"  = $($videoInfo.VideoHeight)
+        "S-Video Bitrate" = $($videoInfo.VideoBitrate)
+        "S-Total Bitrate" = $($videoInfo.TotalBitrate)
+        "S-Duration"      = $($videoInfo.VideoDuration)
     }
 }
 
@@ -376,7 +376,7 @@ while (-not $startFullEncode) {
             # Find the object in $allVideoInfo based on the key
             $matchingObject = $SourceVideoInfo | Where-Object { $_.FileName -eq $lookupFileName }
             # Get Source Video duration
-            $sourceVideoDuration = $matchingObject."Source Duration"
+            $sourceVideoDuration = $matchingObject."S-Duration"
             
             # Calculate if a test encode with $TestEncodeSeconds can be done in the duration of the video, if yes pick a sample in the middle of the source video
             # If Source duration is shorter than $TestEncodeSeconds, pick largest possible sample
@@ -398,25 +398,25 @@ while (-not $startFullEncode) {
     
             $targetVideoInfo += [PSCustomObject]@{
                 FileName               = $($videoInfo.FileName)
-                "Target Format"        = $($videoInfo.Format)
-                "Target Video Width"   = $($videoInfo.VideoWidth)
-                "Target Video Height"  = $($videoInfo.VideoHeight)
-                "Target Video Bitrate" = $($videoInfo.VideoBitrate)
-                "Target Total Bitrate" = $($videoInfo.TotalBitrate)
-                "Target Duration"      = $($videoInfo.VideoDuration)
+                "T-Format"        = $($videoInfo.Format)
+                "T-Video Width"   = $($videoInfo.VideoWidth)
+                "T-Video Height"  = $($videoInfo.VideoHeight)
+                "T-Video Bitrate" = $($videoInfo.VideoBitrate)
+                "T-Total Bitrate" = $($videoInfo.TotalBitrate)
+                "T-Duration"      = $($videoInfo.VideoDuration)
             }
         }
     }
 
     # Initialize an empty array to store merged data
     $allVideoInfo = @()
-    # Merging both tables with Source and Target video info
+    # Merging both tables with S-and Target video info
     $allVideoInfo = Merge-VideoInfo $SourceVideoInfo $targetVideoInfo
        
     # Show results
     Clear-Host
     Write-Host "Preset: " $PresetName
-    $allVideoInfo | Format-Table -AutoSize -Wrap FileName, "Source Format", "Target Format", "Source Total Bitrate", "Target Total Bitrate", "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height"
+    $allVideoInfo | Format-Table -Property FileName, "S-Format", "T-Format", "S-Total Bitrate", "T-Total Bitrate", "S-Video Width", "S-Video Height", "T-Video Width", "T-Video Height" -Wrap
     $response = Read-Host "Is the Bitrate okay? (Y/N)"
     if ($response -eq 'Y' -or $response -eq 'y') {
         $startFullEncode = $true
@@ -478,12 +478,12 @@ if ($startFullEncode) {
     
             $targetVideoInfo += [PSCustomObject]@{
                 FileName               = $($videoInfo.FileName)
-                "Target Format"        = $($videoInfo.Format)
-                "Target Video Width"   = $($videoInfo.VideoWidth)
-                "Target Video Height"  = $($videoInfo.VideoHeight)
-                "Target Video Bitrate" = $($videoInfo.VideoBitrate)
-                "Target Total Bitrate" = $($videoInfo.TotalBitrate)
-                "Target Duration"      = $($videoInfo.VideoDuration)
+                "T-Format"        = $($videoInfo.Format)
+                "T-Video Width"   = $($videoInfo.VideoWidth)
+                "T-Video Height"  = $($videoInfo.VideoHeight)
+                "T-Video Bitrate" = $($videoInfo.VideoBitrate)
+                "T-Total Bitrate" = $($videoInfo.TotalBitrate)
+                "T-Duration"      = $($videoInfo.VideoDuration)
             }
         } elseif (-not $ConvertOnly) {
             # Copy non-MKV files to the output folder
@@ -498,5 +498,5 @@ if ($startFullEncode) {
     # Show results
     Clear-Host
     Write-Host "Preset: " $PresetName
-    $allVideoInfo | Format-Table -AutoSize FileName, "Source Format", "Target Format", "Source Total Bitrate", "Target Total Bitrate", "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height"
+    $allVideoInfo | Format-Table -AutoSize FileName, "S-Format", "T-Format", "S-Total Bitrate", "T-Total Bitrate", "S-Video Width", "S-Video Height", "T-Video Width", "T-Video Height"
 }
