@@ -492,13 +492,14 @@ if ($startFullEncode) {
             $videoInfo = Get-VideoInfo $OutputFilePath $MediaInfocliPath
     
             $targetVideoInfo += [PSCustomObject]@{
-                FileName               = $($videoInfo.FileName)
-                "Target Format"        = $($videoInfo.Format)
-                "Target Video Width"   = $($videoInfo.VideoWidth)
-                "Target Video Height"  = $($videoInfo.VideoHeight)
-                "Target Video Bitrate" = $($videoInfo.VideoBitrate)
-                "Target Total Bitrate" = $($videoInfo.TotalBitrate)
-                "Target Duration"      = $($videoInfo.VideoDuration)
+                FileName                   = $($videoInfo.FileName)
+                "Target Format"            = $($videoInfo.Format)
+                "Target Video Width"       = $($videoInfo.VideoWidth)
+                "Target Video Height"      = $($videoInfo.VideoHeight)
+                "Target Video Bitrate"     = $($videoInfo.VideoBitrate)
+                "Target Total Bitrate"     = $($videoInfo.TotalBitrate)
+                "Target Total Raw Bitrate" = $($videoInfo.RawTotalBitrate)
+                "Target Duration"          = $($videoInfo.VideoDuration)
             }
         } elseif (-not $ConvertOnly) {
             # Copy non-MKV files to the output folder
