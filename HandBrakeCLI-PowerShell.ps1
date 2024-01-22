@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     This script compares and encodes video files using HandBrakeCLI based on specified presets,
-    providing detailed bitrate and format information.
+    providing detailed bitrate and codec information.
 .DESCRIPTION
     The script processes video files in a source folder, encoding them using HandBrakeCLI with
     user-defined presets. It offers the option for a test encode to verify bitrates before
@@ -50,7 +50,7 @@ param (
     [string]$HandBrakeCLI,
 
     [Parameter()]
-    [string]$MediaInfocliPath,
+    [string]$MediaInfoCliPath,
 
     [Parameter()]
     [switch]$TestEncode,
@@ -175,7 +175,7 @@ function Convert-BitRate {
 
 <#
 .SYNOPSIS
-    etrieves detailed information about a video file using MediaInfo CLI.
+    Retrieves detailed information about a video file using MediaInfo CLI.
 .DESCRIPTION
     This function takes a video file path and the path to the MediaInfo CLI executable as inputs.
     It uses MediaInfo to extract information about the video, such as codec, dimensions, bitratePerSecond, and encoder.
@@ -207,8 +207,7 @@ function Get-VideoInfo {
     $generalTrack = $MediaInfoOutput.media.track | Where-Object { $_.'@type' -eq 'General' }
     $videoTrack = $MediaInfoOutput.media.track | Where-Object { $_.'@type' -eq 'Video' }
     
-    $format = $videoTrack.Format_String
-    $codec = $videoTrack.CodecID
+    $codec = $videoTrack.Format_String
     $videoWidth = if ($videoTrack.Width) {
         [int]$videoTrack.Width 
     } else {
@@ -247,7 +246,6 @@ function Get-VideoInfo {
     $singleVideoInfo = [PSCustomObject]@{
         FileName        = (Get-Item -LiteralPath $filePath).BaseName
         FullPath        = $filePath
-        Format          = $format
         Codec           = $codec
         VideoWidth      = $videoWidth
         VideoHeight     = $videoHeight
@@ -272,13 +270,13 @@ function Get-VideoInfo {
     An array containing video information for target videos.
 .EXAMPLE
     $sourceVideoInfo = @(
-        @{ "FileName" = "video1"; "Source Format" = "H.264"; "Source Video Width" = 1920; ... },
-        @{ "FileName" = "video2"; "Source Format" = "H.265"; "Source Video Width" = 1280; ... }
+        @{ "FileName" = "video1"; "Source Codec" = "H.264"; "Source Video Width" = 1920; ... },
+        @{ "FileName" = "video2"; "Source Codec" = "H.265"; "Source Video Width" = 1280; ... }
     )
 
     $targetVideoInfo = @(
-        @{ "FileName" = "video1"; "Format Codec" = "H.265"; "Target Video Width" = 1920; ... },
-        @{ "FileName" = "video3"; "Format Codec" = "H.264"; "Target Video Width" = 1280; ... }
+        @{ "FileName" = "video1"; "Codec Codec" = "H.265"; "Target Video Width" = 1920; ... },
+        @{ "FileName" = "video3"; "Codec Codec" = "H.264"; "Target Video Width" = 1280; ... }
     )
 
     $result = Merge-VideoInfo -SourceVideoInfo $sourceVideoInfo -TargetVideoInfo $targetVideoInfo
@@ -313,7 +311,7 @@ function Merge-VideoInfo {
         if ($matchingTestVideo) {
             $mergedObject = [PSCustomObject]@{
                 FileName                   = $sourceVideo.FileName
-                "Source Format"            = $sourceVideo."Source Format"
+                "Source Codec"             = $sourceVideo."Source Codec"
                 "Source Video Width"       = $sourceVideo."Source Video Width"
                 "Source Video Height"      = $sourceVideo."Source Video Height"
                 "Source Video Bitrate"     = $sourceVideo."Source Video Bitrate"
@@ -321,7 +319,7 @@ function Merge-VideoInfo {
                 "Source Total Raw Bitrate" = $sourceVideo."Source Total Raw Bitrate"
                 'Reduction in Bitrate %'   = $percentageDifference
                 "Source Duration"          = $sourceVideo."Source Duration"
-                "Target Format"            = $matchingTestVideo."Target Format"
+                "Target Codec"             = $matchingTestVideo."Target Codec"
                 "Target Video Width"       = $matchingTestVideo."Target Video Width"
                 "Target Video Height"      = $matchingTestVideo."Target Video Height"
                 "Target Video Bitrate"     = $matchingTestVideo."Target Video Bitrate"
@@ -406,11 +404,11 @@ $sourceVideoInfo = @()
 # Get Source file information
 foreach ($File in $allVideoFiles) {
     # Get the folder path and file name
-    $videoInfo = Get-VideoInfo $file.FullName $MediaInfocliPath
+    $videoInfo = Get-VideoInfo -filePath $file.FullName -MediaInfocliPath $MediaInfocliPath
   
     $SourceVideoInfo += [PSCustomObject]@{
         FileName                   = $($videoInfo.FileName)
-        "Source Format"            = $($videoInfo.Format)
+        "Source Codec"             = $($videoInfo.Codec)
         "Source Video Width"       = $($videoInfo.VideoWidth)
         "Source Video Height"      = $($videoInfo.VideoHeight)
         "Source Video Bitrate"     = $($videoInfo.VideoBitrate)
@@ -473,7 +471,7 @@ while (-not $startFullEncode) {
     
             $targetVideoInfo += [PSCustomObject]@{
                 FileName                   = $($videoInfo.FileName)
-                "Target Format"            = $($videoInfo.Format)
+                "Target Codec"             = $($videoInfo.Codec)
                 "Target Video Width"       = $($videoInfo.VideoWidth)
                 "Target Video Height"      = $($videoInfo.VideoHeight)
                 "Target Video Bitrate"     = $($videoInfo.VideoBitrate)
@@ -492,7 +490,7 @@ while (-not $startFullEncode) {
     # Show results
     Clear-Host
     Write-Host "Preset: " $PresetName
-    $allVideoInfo | Select-Object -Property FileName, "Source Format", "Target Format", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
+    $allVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
     $response = Read-Host "Is the Bitrate okay? (Y/N)"
     if ($response -eq 'Y' -or $response -eq 'y') {
         $startFullEncode = $true
@@ -554,7 +552,7 @@ if ($startFullEncode) {
     
             $targetVideoInfo += [PSCustomObject]@{
                 FileName                   = $($videoInfo.FileName)
-                "Target Format"            = $($videoInfo.Format)
+                "Target Codec"             = $($videoInfo.Codec)
                 "Target Video Width"       = $($videoInfo.VideoWidth)
                 "Target Video Height"      = $($videoInfo.VideoHeight)
                 "Target Video Bitrate"     = $($videoInfo.VideoBitrate)
@@ -575,5 +573,5 @@ if ($startFullEncode) {
     # Show results
     Clear-Host
     Write-Host "Preset: " $PresetName
-    $allVideoInfo | Select-Object -Property FileName, "Source Format", "Target Format", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Target properties"
+    $allVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Target properties"
 }
