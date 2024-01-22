@@ -1,3 +1,36 @@
+<#
+.SYNOPSIS
+    This script compares and encodes video files using HandBrakeCLI based on specified presets,
+    providing detailed bitrate and format information.
+.DESCRIPTION
+    The script processes video files in a source folder, encoding them using HandBrakeCLI with
+    user-defined presets. It offers the option for a test encode to verify bitrates before
+    proceeding with a full encode. The resulting video details are compared and displayed for
+    evaluation.
+.PARAMETER SourceFolder
+    Specifies the path to the source folder containing video files for encoding.
+.PARAMETER OutputFolder
+    Specifies the path where the encoded video files will be saved.
+.PARAMETER PresetFile
+    Specifies the JSON file containing HandBrakeCLI presets. If not provided, the script
+    prompts the user to select one.
+.PARAMETER ConvertOnly
+    If present, the script performs the only the encoding of the video files.
+    If not present, all files with the same basename will be copied to the OutputFolder
+.PARAMETER HandBrakeCLI
+    Specifies the path to the HandBrakeCLI executable. If not provided, the default path is used.
+.PARAMETER MediaInfocliPath
+    Specifies the path to the MediaInfo CLI executable. If not provided, the default path is used.
+.PARAMETER TestEncode
+    If present, the script performs a test encode for a subset of each video to verify bitrates
+    before starting the full encode.
+.PARAMETER TestEncodeSeconds
+    Specifies the duration, in seconds, for the test encode. Default is 120 seconds.
+.EXAMPLE
+    .\HandBrakeCLI-PowerShell.ps1 -SourceFolder "C:\Videos\Source" -OutputFolder "C:\Videos\Output" -PresetFile "C:\Presets\preset.json"
+    This example encodes videos in the "Source" folder using the specified preset file and saves the results in the "Output" folder.
+#>
+
 param (
     [Parameter(Mandatory = $true)]
     [ValidateScript({ Test-Path $_ -PathType 'Container' })]
@@ -26,29 +59,26 @@ param (
     [int]$TestEncodeSeconds = 120
 )
 
-
+<#
+.SYNOPSIS
+    Presents a menu of options to the user and allows them to select one.
+.DESCRIPTION
+    This function displays a menu of options and prompts the user to select one 
+    by entering the corresponding number. If there is only one option, it is 
+    returned directly.
+.PARAMETER MenuOptions
+    Specifies an array of options to be presented in the menu.
+.PARAMETER MenuQuestion
+    Specifies the question or prompt to be displayed when asking the user to 
+    select an option.
+.OUTPUTS 
+    The selected menu option.
+.EXAMPLE
+    $Options = @("Option 1", "Option 2", "Option 3")
+    $SelectedOption = Select-MenuOption -MenuOptions $Options -MenuQuestion "an option"
+    # Prompts the user to select an option and returns the selected option.
+#>
 function Select-MenuOption {
-    <#
-    .SYNOPSIS
-    This function creates a menu with options provided in the $MenuOptions parameter and prompts the user to select an option. The selected option is returned as output.
-    
-    .DESCRIPTION
-    The Select-MenuOption function is used to create a menu with options provided as an array in the $MenuOptions parameter. The function prompts the user to select an option by displaying the options with their corresponding index numbers. The user must enter the index number of the option they wish to select. The function checks if the entered number is within the range of the available options and returns the selected option.
-    
-    .PARAMETER MenuOptions
-    An array of options to be presented in the menu. The options must be of the same data type.
-    
-    .PARAMETER MenuQuestion
-    A string representing the question to be asked when prompting the user for input.
-    
-    .EXAMPLE
-    $Options = @("Option 1","Option 2","Option 3")
-    $Question = "an option"
-    $SelectedOption = Select-MenuOption -MenuOptions $Options -MenuQuestion $Question
-    This example creates a menu with three options "Option 1", "Option 2", and "Option 3". The user is prompted to select an option by displaying the options with their index numbers. The function returns the selected option.
-    
-    .NOTES
-    #>
     param (
         [Parameter(Mandatory = $true)]
         [Object]$MenuOptions,
@@ -86,62 +116,90 @@ function Select-MenuOption {
     }
 }
 
-# Function to convert bitrate to human-readable format with two decimal places
-function Convert-BitRate($bitRate) {
-    <#
-    .SYNOPSIS
-    This function converts a given Bitrate value into a human-readable format, including bps, kbps, and Mbps.
-    
-    .DESCRIPTION
-    The Convert-BitRate function takes a Bitrate value as input and converts it into a more readable format. It calculates and rounds the Bitrate to kilobits per second (kbps) and megabits per second (Mbps) as appropriate, and then returns the formatted result with the corresponding unit.
+<#
+.SYNOPSIS
+    Converts bitrate from bits per second to a human-readable format.
+.DESCRIPTION
+    This function takes a bitrate value in bits per second and converts it to a
+    more human-readable format. It categorizes the bitrate into Mbps, Kbps, or
+    displays it in bits per second, based on the magnitude of the input value.
+.PARAMETER bitratePerSecond
+    Specifies the bitrate value in bits per second that needs to be converted.
+    This parameter is mandatory and can accept input from the pipeline.
+.INPUTS
+    System.Double. Bitrate values in bits per second.
+.OUTPUTS 
+    System.String. The converted bitrate value along with the appropriate unit
+    (Mbps, Kbps, or b/s).
+.EXAMPLE
+    Convert-BitRate -bitratePerSecond 1500000
+    # Output: '1.50 Mb/s'
+    Description: Converts the bitrate value 1500000 b/s to Mbps.
+.EXAMPLE
+    7500 | Convert-BitRate
+    # Output: '7.50 Kb/s'
+    Description: Converts the piped-in bitrate value 7500 b/s to Kbps.
+.EXAMPLE
+    Convert-BitRate -bitratePerSecond 500
+    # Output: '500 b/s'
+    Description: Displays the bitrate value 500 b/s in bits per second.
+#>
 
-    .PARAMETER bitRate
-    Specifies the Bitrate value that needs to be converted. It should be provided in bits per second (bps).
+function Convert-BitRate {
+    [CmdletBinding()]
+    param (
+        [Parameter(
+            Mandatory = $true, 
+            ValueFromPipeline = $true
+        )]
+        [double]$bitratePerSecond
+    )
 
-    .EXAMPLE
-    Example 1:
-    Convert-BitRate -bitRate 2500000
-    This example converts a Bitrate of 2500000 bps into 2.50 Mbps.
-    #>
-    if ($null -eq $bitRate) {
-        return ""
-    }
-
-    $kbps = [math]::Round($bitRate / 1000, 2)
-    $mbps = [math]::Round($kbps / 1000, 2)
-
-    if ($mbps -ge 1) {
-        return ("{0:N2}" -f $mbps) + " Mbps"
-    } elseif ($kbps -ge 1) {
-        return ("{0:N2}" -f $kbps) + " kbps"
-    } else {
-        return "${bitRate} bps"
+    switch ($bitratePerSecond) {
+        { $_ -ge 1000000 } {
+            # Convert to Mb/s
+            '{0:N2} Mb/s' -f ($bitratePerSecond / 1000000)
+            break
+        }
+        { $_ -ge 1000 } {
+            # Convert to Kb/s
+            '{0:N2} Kb/s' -f ($bitratePerSecond / 1000)
+            break
+        }
+        default {
+            # Display in bits if less than 1 bits/s
+            "$bitratePerSecond b/s"
+        }
     }
 }
 
-# Function to extract video information using MediaInfo CLI
-function Get-VideoInfo($filePath, $MediaInfocliPath) {
-    <#
-    .SYNOPSIS
-    Retrieves detailed information about a video file using MediaInfo CLI.
-
-    .DESCRIPTION
+<#
+.SYNOPSIS
+    etrieves detailed information about a video file using MediaInfo CLI.
+.DESCRIPTION
     This function takes a video file path and the path to the MediaInfo CLI executable as inputs.
-    It uses MediaInfo to extract information about the video, such as codec, dimensions, bitrate, and encoder.
-
-    .PARAMETER filePath
+    It uses MediaInfo to extract information about the video, such as codec, dimensions, bitratePerSecond, and encoder.
+.PARAMETER filePath
     Specifies the path to the video file for which information needs to be extracted.
-
-    .PARAMETER MediaInfocliPath
+.PARAMETER MediaInfocliPath
     Specifies the path to the MediaInfo executable.
-
-    .EXAMPLE
+.OUTPUTS
+    A custom object containing video details.
+.EXAMPLE
     Get-VideoInfo -filePath "C:\Videos\video.mp4" -MediaInfocliPath "C:\Program Files\FFmpeg\MediaInfo.exe"
     This example retrieves information about the video file "video.mp4" using MediaInfo.
-
-    .NOTES
+.NOTES
     This function requires MediaInfo to be installed on the system and the MediaInfocliPath parameter to point to its location.
-    #>
+#>
+function Get-VideoInfo {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$filePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$MediaInfocliPath
+    )
+
     $MediaInfoOutput = & $MediaInfocliPath --output=JSON --Full "$filePath" | ConvertFrom-Json
 
     $singleVideoInfo = $null
@@ -164,14 +222,14 @@ function Get-VideoInfo($filePath, $MediaInfocliPath) {
     
     if ($videoTrack.BitRate) {
         $rawVideoBitRate = [int]$videoTrack.BitRate
-        $videoBitRate = Convert-BitRate $rawVideoBitRate
+        $videoBitRate = Convert-BitRate -bitRatePerSecond $rawVideoBitRate
     } else {
         $videoBitRate = $null
     }
     
     if ($generalTrack.OverallBitRate) {
         $rawTotalBitRate = [int]$generalTrack.OverallBitRate
-        $totalBitRate = Convert-BitRate $rawTotalBitRate
+        $totalBitRate = Convert-BitRate -bitRatePerSecond $rawTotalBitRate
     } else {
         $totalBitRate = $null
     }
@@ -203,21 +261,16 @@ function Get-VideoInfo($filePath, $MediaInfocliPath) {
     return $singleVideoInfo
 }
 
-function Merge-VideoInfo([array]$SourceVideoInfo, [array]$TargetVideoInfo) {
-    <#
-    .SYNOPSIS
+<#
+.SYNOPSIS
     Merges source and target video information based on the base name of the file and creates a combined list of video details.
-
-    .DESCRIPTION
+.DESCRIPTION
     This function takes two arrays of video information, source and target, and merges them based on the base name of the file. If a matching base name is found in both arrays, the function creates a combined object containing video details from both sources. If a base name is only present in the source array, its details are added as is. Finally, unmatched target base names are also included in the output.
-
-    .PARAMETER SourceVideoInfo
+.PARAMETER SourceVideoInfo
     An array containing video information for source videos.
-
-    .PARAMETER TargetVideoInfo
+.PARAMETER TargetVideoInfo
     An array containing video information for target videos.
-
-    .EXAMPLE
+.EXAMPLE
     $sourceVideoInfo = @(
         @{ "FileName" = "video1"; "Source Format" = "H.264"; "Source Video Width" = 1920; ... },
         @{ "FileName" = "video2"; "Source Format" = "H.265"; "Source Video Width" = 1280; ... }
@@ -231,7 +284,15 @@ function Merge-VideoInfo([array]$SourceVideoInfo, [array]$TargetVideoInfo) {
     $result = Merge-VideoInfo -SourceVideoInfo $sourceVideoInfo -TargetVideoInfo $targetVideoInfo
 
     # This example will merge video information and create a combined list containing details from both sources.
-    #>
+#>
+function Merge-VideoInfo {
+    param (
+        [Parameter(Mandatory = $true)]
+        [array]$SourceVideoInfo,
+
+        [Parameter(Mandatory = $true)]
+        [array]$TargetVideoInfo
+    )
 
     $allVideoInfo = @()
 
