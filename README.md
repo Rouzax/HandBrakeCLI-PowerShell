@@ -32,7 +32,7 @@ This script is designed to automate the process of converting video files using 
 - `SourceFolder` (mandatory): The path to the folder containing the source video files.
 - `OutputFolder` (mandatory): The path where the converted files will be saved.
 - `PresetFile` (optional): The path to a custom HandBrake preset JSON file. If not provided, a menu will prompt you to select a preset from the available options.
-- `ConvertOnly` (optional): If specified, non-MKV files will be copied to the output folder without conversion.
+- `ConvertOnly` (optional): If specified, it will only encode the video files. Otherwise all other files will also be copied to OutputFolder
 - `HandBrakeCLI` (optional): The path to the HandBrakeCLI executable. If not provided, the default path will be used.
 - `MediaInfocliPath` (Optional): Path to MediaInfo CLI executable.
 - `TestEncode` (optional): If specified, the script will perform a test encode to check bit rates before the full conversion.
