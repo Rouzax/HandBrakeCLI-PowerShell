@@ -230,6 +230,30 @@ function Get-VideoInfoRecursively {
     return $allVideoInfo
 }
 
+<#
+.SYNOPSIS
+	Starts the HandBrake CLI to encode video files using a specified preset.
+.DESCRIPTION
+	This function encodes video files using HandBrake CLI with a preset specified in a JSON file.
+.PARAMETER videoFiles
+	Video files to be encoded.
+.PARAMETER OutputFolder
+	Folder where encoded files will be saved.
+.PARAMETER PresetFile
+	JSON file containing HandBrake preset information.
+.PARAMETER HandBrakeCliPath
+	Path to the HandBrake CLI executable.
+.PARAMETER TestEncode
+	Switch for performing a test encode.
+.PARAMETER TestEncodeSeconds
+    Duration for test encoding in seconds.
+.INPUTS
+	Video files and JSON preset file.
+.OUTPUTS
+	Encoded video files.
+.EXAMPLE
+	Start-HandBrakeCli -videoFiles $files -OutputFolder "C:\Output" -PresetFile "C:\Presets\preset.json" -HandBrakeCliPath "C:\Program Files\HandBrake\HandBrakeCLI.exe"
+#>
 function Start-HandBrakeCli {
     param (
         [Parameter(Mandatory = $true)]
@@ -317,7 +341,7 @@ function Start-HandBrakeCli {
         
         
         # Execute the command
-        $null = Invoke-Expression $fullCommand 2>$null
+        Invoke-Expression $fullCommand 2>$null
         
         $FilesScanned++
         $progressPercent = ($FilesScanned / $totalFilesToScan) * 100
