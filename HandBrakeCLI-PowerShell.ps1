@@ -291,7 +291,7 @@ function Start-HandBrakeCli {
         $baseCommand = "& 'C:\Program Files\HandBrake\HandBrakeCLI.exe'"
         
         # Set common arguments
-        $commonArguments = "--preset-import-file '$PresetFile' --preset '$PresetName' --input '$SourceFilePath' --output '$OutputFilePath'"
+        $commonArguments = "--preset-import-file '$($PresetFile.Fullname)' --preset '$PresetName' --input '$SourceFilePath' --output '$OutputFilePath'"
         
         # Check if $TestEncode is $true
         if ($TestEncode) {
