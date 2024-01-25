@@ -583,8 +583,8 @@ function Merge-VideoInfo {
     }
     
     # Include unmatched targetVideoInfo objects
-    $unmatchedtargetVideoInfo = $targetVideoInfo | Where-Object { $_.FileName -notin $SourceVideoInfo.FileName }
-    $allVideoInfo += $unmatchedtargetVideoInfo
+    $unmatchedTargetVideoInfo = $targetVideoInfo | Where-Object { $_.FileName -notin $SourceVideoInfo.FileName }
+    $allVideoInfo += $unmatchedTargetVideoInfo
 
     return $allVideoInfo
 }
