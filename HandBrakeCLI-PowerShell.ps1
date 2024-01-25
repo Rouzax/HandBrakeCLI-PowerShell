@@ -240,7 +240,7 @@ function Start-HandBrakeCli {
         [string]$OutputFolder,
 
         [Parameter(Mandatory = $true)]
-        [object]$PresetFile,
+        $PresetFile,
 
         [Parameter(Mandatory = $true)]
         [string]$HandBrakeCliPath,
@@ -626,6 +626,7 @@ if (-not (Test-Path -Path $OutputFolder -PathType 'Container')) {
 # Get input if no parameters defined, list all json presets
 if ($PSBoundParameters.ContainsKey('PresetFile')) {
     Write-Host "Preset File given as Parameter"
+    $PresetFile = Get-Item -Path $PresetFile
 } else {
     $PresetFiles = Get-ChildItem -Path $PSScriptRoot\Presets -Filter *.json -File
     $SelectedPreset = Select-MenuOption -MenuOptions $PresetFiles.BaseName -MenuQuestion "Handbrake Preset"
