@@ -16,7 +16,7 @@
     prompts the user to select one.
 .PARAMETER CopyEverything
     If present, the script will copy all files from the SourceFolder to the OutputFolder.
-.PARAMETER HandBrakeCLI
+.PARAMETER HandBrakeCliPath
     Specifies the path to the HandBrakeCLI executable. If not provided, the default path is used.
 .PARAMETER MediaInfocliPath
     Specifies the path to the MediaInfo CLI executable. If not provided, the default path is used.
@@ -280,6 +280,7 @@ function Start-HandBrakeCli {
             New-Item -ItemType Directory -Path $OutputFileFolder | Out-Null
         }
         
+        Write-Progress -Activity "Encoding: $($FilesScanned + 1) of $totalFilesToScan" -Status "Encoding: $($videoFile.FileName)" -PercentComplete $progressPercent
         # Change the extension if needed on all video files
         # Get the current extension
         $currentExtension = [System.IO.Path]::GetExtension($OutputFilePath)
@@ -315,7 +316,6 @@ function Start-HandBrakeCli {
         # Construct the full command
         $fullCommand = "$baseCommand $commonArguments $additionalArguments"
         
-        Write-Progress -Activity "Encoding: $($FilesScanned + 1) of $totalFilesToScan" -Status "Encoding: $($videoFile.FileName)" -PercentComplete $progressPercent
         
         # Execute the command
         $null = Invoke-Expression $fullCommand 2>$null
@@ -648,7 +648,7 @@ $sourceVideoFiles = @()
 
 
 #* Start of script
-Clear-Host
+# Clear-Host
 
 $FilesParams = @{
     Recurse = $true
@@ -657,6 +657,8 @@ $FilesParams = @{
 }
 $allFiles = Get-ChildItem @FilesParams
 $sourceVideoFiles = $allFiles | Where-Object { $_.Extension -match '\.(mp4|mkv|avi|mov|wmv)$' }
+$sourceNonVideoFiles = $allFiles | Where-Object { $_.Extension -notmatch '\.(mp4|mkv|avi|mov|wmv)$' }
+
 if ($sourceVideoFiles.count -eq 0) {
     Write-Host "No video files found in location: $SourceFolder"
     Exit
@@ -717,20 +719,20 @@ while (-not $startFullEncode) {
     # Merging both tables with Source and Target video info
     $combinedVideoInfo = Merge-VideoInfo $SourceVideoObj $targetVideoObj
     # Show results
-    Clear-Host
+    # Clear-Host
     Write-Host "Preset: " $PresetName
     $combinedVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
     $response = Read-Host "Is the Bitrate okay? (Y/N)"
 
     if ($response -eq 'Y' -or $response -eq 'y') {
-        Clear-Host
+        # Clear-Host
         # We are happy with the test encode, full encode can start
         $startFullEncode = $true
         
         # Clean Target Folder
         $null = Remove-Item -Path $OutputFolder -Recurse -Force
     } elseif ($response -eq 'N' -or $response -eq 'n') {
-        Clear-Host
+        # Clear-Host
         # Prompt to select a different preset
         $SelectedPreset = Select-MenuOption -MenuOptions $PresetFiles.BaseName -MenuQuestion "Handbrake Preset"
         $PresetFile = $PresetFiles | Where-Object { $_.BaseName -match $SelectedPreset }
@@ -776,12 +778,38 @@ if ($startFullEncode) {
         }
     }
 
+    if ($CopyEverything) {
+        $totalFilesToCopy = ($sourceNonVideoFiles).Count
+        $FilesCopied = 0
+        foreach ($file in $sourceNonVideoFiles) {
+            <# $file is the current item #>
+            $progressPercent = ($FilesCopied / $totalFilesToCopy) * 100
+            
+            # Get the folder path and file name
+            $SourceFilePath = $file.FullName
+            $SourceFileRelativePath = $SourceFilePath.Substring($SourceFolder.Length + 1)
+            # Create Output file path
+            $OutputFilePath = Join-Path -Path $OutputFolder -ChildPath $SourceFileRelativePath
+            Write-Progress -Activity "Copy: $($FilesCopied + 1) of $totalFilesToCopy" -Status "File: $($file.FileName)" -PercentComplete $progressPercent
+            
+            # Copy non-MKV files to the output folder
+            Copy-Item -LiteralPath $SourceFilePath -Destination $OutputFilePath -Force
+            
+            $FilesCopied++
+            $progressPercent = ($FilesCopied / $totalFilesToCopy) * 100
+            Write-Progress -Activity "Copy: $FilesCopied of $totalFilesToCopy" -Status "File: $($file.FileName)" -PercentComplete $progressPercent
+        }
+        Write-Progress -Completed -Activity "Processing: Done"
+     
+    }
+
     # Initialize an empty array to store merged data
     $combinedVideoInfo = @()
     # Merging both tables with Source and Target video info
     $combinedVideoInfo = Merge-VideoInfo $SourceVideoObj $targetVideoObj
     # Show results
-    Clear-Host
+    # Clear-Host
     Write-Host "Preset: " $PresetName
     $combinedVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
 }
+
