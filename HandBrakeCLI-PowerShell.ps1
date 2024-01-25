@@ -648,7 +648,7 @@ $sourceVideoFiles = @()
 
 
 #* Start of script
-##Clear-Host
+Clear-Host
 
 $FilesParams = @{
     Recurse = $true
