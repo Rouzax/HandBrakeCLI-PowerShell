@@ -648,7 +648,7 @@ $sourceVideoFiles = @()
 
 
 #* Start of script
-# Clear-Host
+Clear-Host
 
 $FilesParams = @{
     Recurse = $true
@@ -719,20 +719,20 @@ while (-not $startFullEncode) {
     # Merging both tables with Source and Target video info
     $combinedVideoInfo = Merge-VideoInfo $SourceVideoObj $targetVideoObj
     # Show results
-    # Clear-Host
+    Clear-Host
     Write-Host "Preset: " $PresetName
     $combinedVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
     $response = Read-Host "Is the Bitrate okay? (Y/N)"
 
     if ($response -eq 'Y' -or $response -eq 'y') {
-        # Clear-Host
+        Clear-Host
         # We are happy with the test encode, full encode can start
         $startFullEncode = $true
         
         # Clean Target Folder
         $null = Remove-Item -Path $OutputFolder -Recurse -Force
     } elseif ($response -eq 'N' -or $response -eq 'n') {
-        # Clear-Host
+        Clear-Host
         # Prompt to select a different preset
         $SelectedPreset = Select-MenuOption -MenuOptions $PresetFiles.BaseName -MenuQuestion "Handbrake Preset"
         $PresetFile = $PresetFiles | Where-Object { $_.BaseName -match $SelectedPreset }
@@ -808,7 +808,7 @@ if ($startFullEncode) {
     # Merging both tables with Source and Target video info
     $combinedVideoInfo = Merge-VideoInfo $SourceVideoObj $targetVideoObj
     # Show results
-    # Clear-Host
+    Clear-Host
     Write-Host "Preset: " $PresetName
     $combinedVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
 }
