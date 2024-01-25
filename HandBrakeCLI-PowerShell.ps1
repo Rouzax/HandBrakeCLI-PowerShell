@@ -39,8 +39,7 @@ param (
     [string]$OutputFolder,
 
     [Parameter(Mandatory = $false)]
-    [ValidateScript({ Test-Path $_ -PathType 'Leaf' })]
-    [Object]$PresetFile,
+    $PresetFile,
 
     [Parameter(Mandatory = $false)]
     [switch]$CopyEverything,
