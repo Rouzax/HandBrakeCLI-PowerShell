@@ -253,7 +253,7 @@ function Start-HandBrakeCli {
     )
 
     # Read the JSON preset file
-    $JsonContent = Get-Content -Path $PresetFile | ConvertFrom-Json
+    $JsonContent = Get-Content -Path $PresetFile.FullName | ConvertFrom-Json
 
     # Get the preset name
     $PresetName = $JsonContent.PresetList[0].PresetName
