@@ -10,10 +10,11 @@ This script is designed to automate the process of converting video files using 
 - Select presets for conversion
 - Merge source and target video information for comparison
 
-Encoding
+## Screenshots
+**Encoding**
 ![image](https://github.com/Rouzax/HandBrakeCLI-PowerShell/assets/4103090/65dcbf0f-33cf-4206-afeb-4fddd090578a)
 
-Result
+**Result**
 ![image](https://github.com/Rouzax/HandBrakeCLI-PowerShell/assets/4103090/e650d8ca-6035-4316-90b4-4e5626e26fd0)
 
 ## Requirements
