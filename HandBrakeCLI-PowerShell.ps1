@@ -289,6 +289,7 @@ function Start-HandBrakeCli {
 
     foreach ($videoFile in $videoFiles) {
         <# $videoFile is the current item #>
+        Clear-Host
         $progressPercent = ($FilesScanned / $totalFilesToScan) * 100
         
         # Get the folder path and file name
