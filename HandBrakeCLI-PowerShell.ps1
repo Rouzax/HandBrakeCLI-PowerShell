@@ -237,6 +237,8 @@ function Get-VideoInfoRecursively {
 	This function encodes video files using HandBrake CLI with a preset specified in a JSON file.
 .PARAMETER videoFiles
 	Video files to be encoded.
+.PARAMETER SourceFolder
+	Source Folder of encoded files.
 .PARAMETER OutputFolder
 	Folder where encoded files will be saved.
 .PARAMETER PresetFile
@@ -252,12 +254,15 @@ function Get-VideoInfoRecursively {
 .OUTPUTS
 	Encoded video files.
 .EXAMPLE
-	Start-HandBrakeCli -videoFiles $files -OutputFolder "C:\Output" -PresetFile "C:\Presets\preset.json" -HandBrakeCliPath "C:\Program Files\HandBrake\HandBrakeCLI.exe"
+	Start-HandBrakeCli -videoFiles $files -SourceFolder "C:\Source" -OutputFolder "C:\Output" -PresetFile "C:\Presets\preset.json" -HandBrakeCliPath "C:\Program Files\HandBrake\HandBrakeCLI.exe"
 #>
 function Start-HandBrakeCli {
     param (
         [Parameter(Mandatory = $true)]
         [object]$videoFiles,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SourceFolder,
 
         [Parameter(Mandatory = $true)]
         [string]$OutputFolder,
@@ -289,12 +294,9 @@ function Start-HandBrakeCli {
 
     foreach ($videoFile in $videoFiles) {
         <# $videoFile is the current item #>
-        Clear-Host
-        $progressPercent = ($FilesScanned / $totalFilesToScan) * 100
-        
         # Get the folder path and file name
         $SourceFilePath = $videoFile.FullName
-        $SourceFileRelativePath = $SourceFilePath.Substring($SourceFolder.Length + 1)
+        $SourceFileRelativePath = $SourceFilePath.Substring($SourceFolder.Length)
         # Create Output file path
         $OutputFilePath = Join-Path -Path $OutputFolder -ChildPath $SourceFileRelativePath
         
@@ -303,8 +305,9 @@ function Start-HandBrakeCli {
         if (-not (Test-Path -Path $OutputFileFolder -PathType 'Container')) {
             New-Item -ItemType Directory -Path $OutputFileFolder | Out-Null
         }
-        
-        Write-Progress -Activity "Encoding: $($FilesScanned + 1) of $totalFilesToScan" -Status "Encoding: $($videoFile.FileName)" -PercentComplete $progressPercent
+        Write-Host "Video: $($FilesScanned + 1) of $totalFilesToScan" -ForegroundColor DarkYellow
+        Write-Host "    Encoding: $($videoFile.FileName)" -ForegroundColor DarkYellow
+
         # Change the extension if needed on all video files
         # Get the current extension
         $currentExtension = [System.IO.Path]::GetExtension($OutputFilePath)
@@ -339,16 +342,12 @@ function Start-HandBrakeCli {
 
         # Construct the full command
         $fullCommand = "$baseCommand $commonArguments $additionalArguments"
-        
-        
+                
         # Execute the command
         Invoke-Expression $fullCommand 2>$null
         
         $FilesScanned++
-        $progressPercent = ($FilesScanned / $totalFilesToScan) * 100
-        Write-Progress -Activity "Encoding: $FilesScanned of $totalFilesToScan" -Status "Encoding: $($videoFile.FileName)" -PercentComplete $progressPercent
     }
-    Write-Progress -Completed -Activity "Processing: Done"
 }
 
 <#
@@ -589,7 +588,7 @@ function Merge-VideoInfo {
                 "Source Video Bitrate"     = $sourceVideo."Source Video Bitrate"
                 "Source Total Bitrate"     = $sourceVideo."Source Total Bitrate"
                 "Source Total Raw Bitrate" = $sourceVideo."Source Total Raw Bitrate"
-                'Reduction in Bitrate %'   = $percentageDifference
+                'Reduction in Bitrate %'   = [math]::Round($percentageDifference, 2)
                 "Source Duration"          = $sourceVideo."Source Duration"
                 "Target Codec"             = $matchingTestVideo."Target Codec"
                 "Target Video Width"       = $matchingTestVideo."Target Video Width"
@@ -671,6 +670,7 @@ $sourceVideoObj = @()
 $sourceVideoInfo = @()
 $sourceVideoFiles = @()
 
+$fileExtensions = "mp4", "m4v", "mkv", "avi", "mov", "wmv", "ts", "flv", "webm", "mpeg", "mpg"
 
 #* Start of script
 Clear-Host
@@ -681,8 +681,8 @@ $FilesParams = @{
     File    = $true
 }
 $allFiles = Get-ChildItem @FilesParams
-$sourceVideoFiles = $allFiles | Where-Object { $_.Extension -match '\.(mp4|mkv|avi|mov|wmv)$' }
-$sourceNonVideoFiles = $allFiles | Where-Object { $_.Extension -notmatch '\.(mp4|mkv|avi|mov|wmv)$' }
+$sourceVideoFiles = $allFiles | Where-Object { $_.Extension -match '\.({0})$' -f ($fileExtensions -join '|') }
+$sourceNonVideoFiles = $allFiles | Where-Object { $_.Extension -match '\.({0})$' -f ($fileExtensions -join '|') }
 
 if ($sourceVideoFiles.count -eq 0) {
     Write-Host "No video files found in location: $SourceFolder"
@@ -713,14 +713,14 @@ while (-not $startFullEncode) {
     $targetVideoFiles = @()
     
     # Start the test encodes
-    Start-HandBrakeCli -videoFiles $sourceVideoInfo -OutputFolder $OutputFolder -PresetFile $PresetFile -HandBrakeCliPath $HandBrakeCliPath -TestEncode -TestEncodeSeconds $TestEncodeSeconds
+    Start-HandBrakeCli -videoFiles $sourceVideoInfo -SourceFolder $SourceFolder -OutputFolder $OutputFolder -PresetFile $PresetFile -HandBrakeCliPath $HandBrakeCliPath -TestEncode -TestEncodeSeconds $TestEncodeSeconds
 
     $FilesParams = @{
         Recurse = $true
         Path    = $OutputFolder
         File    = $true
     }
-    $targetVideoFiles = Get-ChildItem @FilesParams | Where-Object { $_.Extension -match '\.(mp4|mkv|avi|mov|wmv)$' }
+    $targetVideoFiles = Get-ChildItem @FilesParams | Where-Object { $_.Extension -match '\.({0})$' -f ($fileExtensions -join '|') }
 
     # Get Target video information
     $targetVideoInfo = Get-VideoInfoRecursively -videoFiles $targetVideoFiles -MediaInfoCliPath $MediaInfocliPath
@@ -744,20 +744,20 @@ while (-not $startFullEncode) {
     # Merging both tables with Source and Target video info
     $combinedVideoInfo = Merge-VideoInfo $SourceVideoObj $targetVideoObj
     # Show results
-   Clear-Host
+    Clear-Host
     Write-Host "Preset: " $PresetFile.BaseName
     $combinedVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
     $response = Read-Host "Is the Bitrate okay? (Y/N)"
 
     if ($response -eq 'Y' -or $response -eq 'y') {
-       Clear-Host
+        Clear-Host
         # We are happy with the test encode, full encode can start
         $startFullEncode = $true
         
         # Clean Target Folder
         $null = Remove-Item -Path $OutputFolder -Recurse -Force
     } elseif ($response -eq 'N' -or $response -eq 'n') {
-       Clear-Host
+        Clear-Host
         # Prompt to select a different preset
         $SelectedPreset = Select-MenuOption -MenuOptions $PresetFiles.BaseName -MenuQuestion "Handbrake Preset"
         $PresetFile = $PresetFiles | Where-Object { $_.BaseName -match $SelectedPreset }
@@ -777,14 +777,14 @@ if ($startFullEncode) {
     $targetVideoFiles = @()
 
     # Start the Full encodes
-    Start-HandBrakeCli -videoFiles $sourceVideoInfo -OutputFolder $OutputFolder -PresetFile $PresetFile -HandBrakeCliPath $HandBrakeCliPath
+    Start-HandBrakeCli -videoFiles $sourceVideoInfo -SourceFolder $SourceFolder -OutputFolder $OutputFolder -PresetFile $PresetFile -HandBrakeCliPath $HandBrakeCliPath
 
     $FilesParams = @{
         Recurse = $true
         Path    = $OutputFolder
         File    = $true
     }
-    $targetVideoFiles = Get-ChildItem @FilesParams | Where-Object { $_.Extension -match '\.(mp4|mkv|avi|mov|wmv)$' }
+    $targetVideoFiles = Get-ChildItem @FilesParams | Where-Object { $_.Extension -match '\.({0})$' -f ($fileExtensions -join '|') }
 
     # Get Target video information
     $targetVideoInfo = Get-VideoInfoRecursively -videoFiles $targetVideoFiles -MediaInfoCliPath $MediaInfocliPath
@@ -833,7 +833,7 @@ if ($startFullEncode) {
     # Merging both tables with Source and Target video info
     $combinedVideoInfo = Merge-VideoInfo $SourceVideoObj $targetVideoObj
     # Show results
-   Clear-Host
+    Clear-Host
     Write-Host "Preset: " $PresetFile.BaseName
     $combinedVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
 }
