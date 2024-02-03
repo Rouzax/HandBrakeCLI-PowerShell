@@ -366,10 +366,10 @@ function Start-HandBrakeCli {
 .OUTPUTS 
     None
 .EXAMPLE
-    Update-HandbrakeCLI -InstallationPath "C:\Program Files\HandBrake"
+    Update-HandbrakeCLI -InstallationPath "C:\Program Files\HandBrake\HandBrakeCLI.exe"
     # Checks and updates HandBrakeCLI to the latest version in the specified path.
 .EXAMPLE
-    Update-HandbrakeCLI -InstallationPath "D:\HandBrake"
+    Update-HandbrakeCLI -InstallationPath "D:\HandBrake\HandBrakeCLI.exe"
     # Checks and updates HandBrakeCLI to the latest version in the specified path.
 #>
 
@@ -378,37 +378,39 @@ function Update-HandbrakeCLI {
         [string]$InstallationPath
     )
 
-    # Check if writing to $InstallationPath requires elevated permissions
+        # Extract the folder path without the executable
+        $FolderPath = Split-Path $InstallationPath
+
+    # Check if writing to $FolderPath requires elevated permissions
     try {
         # Check if the folder exists, if not create it
-        if (-not (Test-Path $InstallationPath)) {
-            New-Item -ItemType Directory -Path $InstallationPath -ErrorAction Stop | Out-Null
+        if (-not (Test-Path $FolderPath)) {
+            New-Item -ItemType Directory -Path $FolderPath -ErrorAction Stop | Out-Null
         }
 
-        # Check if writing to $InstallationPath requires elevated permissions
-        $testPath = Join-Path $InstallationPath "Test-Permission.txt"
-        $null | Out-File -FilePath $testPath -Force
-        Remove-Item -Path $testPath -Force
-
-        $isElevationRequired = $false
+        # Check if writing to $FolderPath requires elevated permissions
+        $testPath = Join-Path $FolderPath "Test-Permission.txt"
+        $null | Out-File -FilePath $testPath -Force -ErrorAction Stop
+        Remove-Item -Path $testPath -Force -ErrorAction Stop
     } catch [System.UnauthorizedAccessException] {
-        Write-Host "Insufficient permissions to write to $InstallationPath. Please run the script as an administrator." -ForegroundColor DarkRed
-        return
+        Write-Host "Insufficient permissions to write to $FolderPath." -ForegroundColor DarkRed
+        Write-Host "Please run the script as an administrator." -ForegroundColor DarkRed
+        $ErrorMessage = $_.Exception.Message
+        Write-Host "       Error Message: $ErrorMessage" -ForegroundColor DarkRed 
+        Exit
     } catch [System.Exception] {
-        Write-Host "Error creating test file in $InstallationPath. $($_.Exception.Message)" -ForegroundColor DarkRed
-        return
-    }
-
-    if ($isElevationRequired) {
-        Write-Host "Script requires elevated permissions to write to $InstallationPath. Please run the script as an administrator." -ForegroundColor DarkYellow
-        return
+        Write-Host "Insufficient permissions to write to $FolderPath." -ForegroundColor DarkRed
+        Write-Host "Please run the script as an administrator." -ForegroundColor DarkRed
+        $ErrorMessage = $_.Exception.Message
+        Write-Host "       Error Message: $ErrorMessage" -ForegroundColor DarkRed 
+        Exit
     }
 
     # Define version file path
-    $versionFilePath = Join-Path $InstallationPath "HandBrakeCLI-Version.json"
+    $versionFilePath = Join-Path $FolderPath "HandBrakeCLI-Version.json"
 
     # Check if HandbrakeCLI is installed
-    $handbrakeCLIPath = Join-Path $InstallationPath "HandBrakeCLI.exe"
+    $handbrakeCLIPath = Join-Path $FolderPath "HandBrakeCLI.exe"
 
     if (Test-Path $handbrakeCLIPath) {
         # HandbrakeCLI is installed
@@ -482,7 +484,7 @@ function Update-HandbrakeCLI {
         Write-Host "." -ForegroundColor DarkGray 
 
         # Define download path
-        $downloadPath = Join-Path $InstallationPath "HandBrakeCLI-$latestVersion-win-x86_64.zip"
+        $downloadPath = Join-Path $FolderPath "HandBrakeCLI-$latestVersion-win-x86_64.zip"
 
         # Download the zip file
         Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
@@ -495,9 +497,9 @@ function Update-HandbrakeCLI {
 
         # Extract the contents
         Write-Host "    Extracting files to " -ForegroundColor DarkGray -NoNewline 
-        Write-Host "$InstallationPath" -ForegroundColor Cyan -NoNewline 
+        Write-Host "$FolderPath" -ForegroundColor Cyan -NoNewline 
         Write-Host "." -ForegroundColor DarkGray 
-        Expand-Archive -Path $downloadPath -DestinationPath $InstallationPath -Force
+        Expand-Archive -Path $downloadPath -DestinationPath $FolderPath -Force
 
         # Clean up the downloaded zip file
         Remove-Item -Path $downloadPath -Force
@@ -796,8 +798,8 @@ if (-not (Test-Path $MediaInfocliPath)) {
 
 # Handle no HandBrakeCLI Path given as parameter
 if (-not $PSBoundParameters.ContainsKey('HandBrakeCliPath')) {
-    Update-HandbrakeCLI -InstallationPath "$PSScriptRoot\HandBrakeCli"
-    $HandBrakeCliPath = "$PSScriptRoot\HandBrakeCli"
+    Update-HandbrakeCLI -InstallationPath "$PSScriptRoot\HandBrakeCLI\HandBrakeCLI.exe"
+    $HandBrakeCliPath = "$PSScriptRoot\HandBrakeCLI\HandBrakeCLI.exe"
 } else {
     # Check version of HandbrakeCLi Path that was given and update if needed
     Update-HandbrakeCLI -InstallationPath $HandBrakeCliPath
