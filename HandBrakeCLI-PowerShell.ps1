@@ -315,7 +315,7 @@ function Start-HandBrakeCli {
         $OutputFilePath = $OutputFilePath -replace [regex]::Escape($currentExtension), $VideoExtensionPreset
 
         # Set the base command
-        $baseCommand = "& 'C:\Program Files\HandBrake\HandBrakeCLI.exe'"
+        $baseCommand = "& $HandBrakeCliPath"
         
         # Set common arguments
         $commonArguments = "--preset-import-file '$($PresetFile.Fullname)' --preset '$PresetName' --input '$SourceFilePath' --output '$OutputFilePath'"
