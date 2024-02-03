@@ -380,16 +380,27 @@ function Update-HandbrakeCLI {
 
     # Check if writing to $InstallationPath requires elevated permissions
     try {
+        # Check if the folder exists, if not create it
+        if (-not (Test-Path $InstallationPath)) {
+            New-Item -ItemType Directory -Path $InstallationPath -ErrorAction Stop | Out-Null
+        }
+
+        # Check if writing to $InstallationPath requires elevated permissions
         $testPath = Join-Path $InstallationPath "Test-Permission.txt"
         $null | Out-File -FilePath $testPath -Force
         Remove-Item -Path $testPath -Force
+
         $isElevationRequired = $false
-    } catch {
-        $isElevationRequired = $true
+    } catch [System.UnauthorizedAccessException] {
+        Write-Host "Insufficient permissions to write to $InstallationPath. Please run the script as an administrator." -ForegroundColor DarkRed
+        return
+    } catch [System.Exception] {
+        Write-Host "Error creating test file in $InstallationPath. $($_.Exception.Message)" -ForegroundColor DarkRed
+        return
     }
 
     if ($isElevationRequired) {
-        Write-Host "Script requires elevated permissions to write to $InstallationPath. Please run the script as an administrator."
+        Write-Host "Script requires elevated permissions to write to $InstallationPath. Please run the script as an administrator." -ForegroundColor DarkYellow
         return
     }
 
@@ -422,18 +433,23 @@ function Update-HandbrakeCLI {
             $versionObject | ConvertTo-Json | Out-File -FilePath $versionFilePath -Force
         }
 
-        Write-Host "Current installed version of HandBrakeCLI: $currentVersion"
-        Write-Host "Last local update: $lastLocalUpdate"
+        Write-Host "`n    Current installed version of HandBrakeCLI: " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$currentVersion" -ForegroundColor Cyan
+        Write-Host "    Last local update: " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$lastLocalUpdate" -ForegroundColor Cyan -NoNewline 
+        Write-Host "." -ForegroundColor DarkGray 
 
         if ($lastOnlineRelease -ne $null) {
-            Write-Host "Last online release: $lastOnlineRelease"
+            Write-Host "    Last online release: " -ForegroundColor DarkGray -NoNewline 
+            Write-Host "$lastOnlineRelease" -ForegroundColor Cyan -NoNewline 
+            Write-Host "." -ForegroundColor DarkGray 
         }
     } else {
         # HandbrakeCLI is not installed
         $currentVersion = "0.0.0"
         $lastLocalUpdate = $null
         $lastOnlineRelease = $null
-        Write-Host "No local version of HandBrakeCLI found."
+        Write-Host "    No local version of HandBrakeCLI found." -ForegroundColor DarkGray
     }
 
     # Define the GitHub releases URL
@@ -450,7 +466,7 @@ function Update-HandbrakeCLI {
     $handbrakeCLIAsset = $assets | Where-Object { $_.name -match 'HandBrakeCLI-\d+\.\d+\.\d+-win-x86_64\.zip' }
 
     if ($handbrakeCLIAsset -eq $null) {
-        Write-Host "No HandBrakeCLI asset found in the latest release with the correct name pattern."
+        Write-Host "    No HandBrakeCLI asset found in the latest release with the correct name pattern." -ForegroundColor DarkGray
         return
     }
 
@@ -459,7 +475,11 @@ function Update-HandbrakeCLI {
 
     # Compare versions
     if ($latestVersion -gt $currentVersion) {
-        Write-Host "Updating HandBrakeCLI from version $currentVersion to $latestVersion."
+        Write-Host "    Updating HandBrakeCLI from version " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$currentVersion " -ForegroundColor Cyan -NoNewline 
+        Write-Host "to " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$latestVersion" -ForegroundColor Cyan -NoNewline 
+        Write-Host "." -ForegroundColor DarkGray 
 
         # Define download path
         $downloadPath = Join-Path $InstallationPath "HandBrakeCLI-$latestVersion-win-x86_64.zip"
@@ -469,12 +489,14 @@ function Update-HandbrakeCLI {
 
         # Check if version file path is defined
         if (-not $versionFilePath) {
-            Write-Host "Version file path is not defined. Aborting update."
+            Write-Host "    Version file path is not defined. Aborting update." -ForegroundColor DarkGray
             return
         }
 
         # Extract the contents
-        Write-Host "Extracting files to $InstallationPath."
+        Write-Host "    Extracting files to " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$InstallationPath" -ForegroundColor Cyan -NoNewline 
+        Write-Host "." -ForegroundColor DarkGray 
         Expand-Archive -Path $downloadPath -DestinationPath $InstallationPath -Force
 
         # Clean up the downloaded zip file
@@ -488,9 +510,11 @@ function Update-HandbrakeCLI {
         }
         $versionObject | ConvertTo-Json | Out-File -FilePath $versionFilePath -Force
 
-        Write-Host "Update completed successfully."
+        Write-Host "    Update completed successfully." -ForegroundColor DarkGray
     } else {
-        Write-Host "HandBrakeCLI is already up to date (version $currentVersion)."
+        Write-Host "    HandBrakeCLI is already up to date (version :" -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$currentVersion" -ForegroundColor Cyan -NoNewline
+        Write-Host ")." -ForegroundColor DarkGray 
     }
 }
 
@@ -779,10 +803,10 @@ if (-not $PSBoundParameters.ContainsKey('HandBrakeCliPath')) {
     Update-HandbrakeCLI -InstallationPath $HandBrakeCliPath
 }
 
-# Check if MediaInfo executable exists
+# Check if Handbrake executable exists
 if (-not (Test-Path $HandBrakeCliPath)) {
     Write-Host "Error: HandBrake CLI executable not found at the specified path: $HandBrakeCliPath"
-    Write-Host "Please provide the correct path to the MediaInfo CLI executable using the HandBrakeCliPath parameter."
+    Write-Host "Please provide the correct path to the Handbrake CLI executable using the HandBrakeCliPath parameter."
     Exit
 }
 
