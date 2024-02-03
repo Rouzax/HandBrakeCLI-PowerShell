@@ -352,6 +352,150 @@ function Start-HandBrakeCli {
 
 <#
 .SYNOPSIS
+    Updates HandBrakeCLI to the latest version.
+.DESCRIPTION
+    This function checks the local version of HandBrakeCLI and updates it to the latest
+    version available on GitHub if a newer version exists. It also verifies if the script
+    has the necessary permissions to write to the specified installation path.
+.PARAMETER InstallationPath
+    Specifies the path where HandBrakeCLI should be installed or updated. Ensure the
+    script has write permissions to this location. If elevation is required, the script
+    prompts the user to run with administrator privileges.
+.INPUTS
+    None
+.OUTPUTS 
+    None
+.EXAMPLE
+    Update-HandbrakeCLI -InstallationPath "C:\Program Files\HandBrake"
+    # Checks and updates HandBrakeCLI to the latest version in the specified path.
+.EXAMPLE
+    Update-HandbrakeCLI -InstallationPath "D:\HandBrake"
+    # Checks and updates HandBrakeCLI to the latest version in the specified path.
+#>
+
+function Update-HandbrakeCLI {
+    param(
+        [string]$InstallationPath
+    )
+
+    # Check if writing to $InstallationPath requires elevated permissions
+    try {
+        $testPath = Join-Path $InstallationPath "Test-Permission.txt"
+        $null | Out-File -FilePath $testPath -Force
+        Remove-Item -Path $testPath -Force
+        $isElevationRequired = $false
+    } catch {
+        $isElevationRequired = $true
+    }
+
+    if ($isElevationRequired) {
+        Write-Host "Script requires elevated permissions to write to $InstallationPath. Please run the script as an administrator."
+        return
+    }
+
+    # Define version file path
+    $versionFilePath = Join-Path $InstallationPath "HandBrakeCLI-Version.json"
+
+    # Check if HandbrakeCLI is installed
+    $handbrakeCLIPath = Join-Path $InstallationPath "HandBrakeCLI.exe"
+
+    if (Test-Path $handbrakeCLIPath) {
+        # HandbrakeCLI is installed
+        if (Test-Path $versionFilePath) {
+            # Read the version information from the JSON file
+            $versionInfo = Get-Content $versionFilePath | ConvertFrom-Json
+            $currentVersion = $versionInfo.Version
+            $lastLocalUpdate = $versionInfo.LastLocalUpdate
+            $lastOnlineRelease = $versionInfo.LastOnlineRelease
+        } else {
+            # No version file found, download and get version
+            $currentVersion = (Get-Command $handbrakeCLIPath).FileVersionInfo.ProductVersion
+            $lastLocalUpdate = Get-Date
+            $lastOnlineRelease = $null
+
+            # Save the version information to a JSON file
+            $versionObject = [PSCustomObject]@{
+                Version           = $currentVersion
+                LastLocalUpdate   = $lastLocalUpdate
+                LastOnlineRelease = $lastOnlineRelease
+            }
+            $versionObject | ConvertTo-Json | Out-File -FilePath $versionFilePath -Force
+        }
+
+        Write-Host "Current installed version of HandBrakeCLI: $currentVersion"
+        Write-Host "Last local update: $lastLocalUpdate"
+
+        if ($lastOnlineRelease -ne $null) {
+            Write-Host "Last online release: $lastOnlineRelease"
+        }
+    } else {
+        # HandbrakeCLI is not installed
+        $currentVersion = "0.0.0"
+        $lastLocalUpdate = $null
+        $lastOnlineRelease = $null
+        Write-Host "No local version of HandBrakeCLI found."
+    }
+
+    # Define the GitHub releases URL
+    $githubApiUrl = 'https://api.github.com/repos/HandBrake/HandBrake/releases/latest'
+    
+    # Get the latest release information
+    $latestRelease = Invoke-RestMethod -Uri $githubApiUrl
+
+    # Extract version information from the latest release
+    $latestVersion = $latestRelease.tag_name
+    $assets = $latestRelease.assets
+
+    # Find the HandBrakeCLI asset with the correct name pattern
+    $handbrakeCLIAsset = $assets | Where-Object { $_.name -match 'HandBrakeCLI-\d+\.\d+\.\d+-win-x86_64\.zip' }
+
+    if ($handbrakeCLIAsset -eq $null) {
+        Write-Host "No HandBrakeCLI asset found in the latest release with the correct name pattern."
+        return
+    }
+
+    # Extract download information
+    $downloadUrl = $handbrakeCLIAsset.browser_download_url[0]
+
+    # Compare versions
+    if ($latestVersion -gt $currentVersion) {
+        Write-Host "Updating HandBrakeCLI from version $currentVersion to $latestVersion."
+
+        # Define download path
+        $downloadPath = Join-Path $InstallationPath "HandBrakeCLI-$latestVersion-win-x86_64.zip"
+
+        # Download the zip file
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
+
+        # Check if version file path is defined
+        if (-not $versionFilePath) {
+            Write-Host "Version file path is not defined. Aborting update."
+            return
+        }
+
+        # Extract the contents
+        Write-Host "Extracting files to $InstallationPath."
+        Expand-Archive -Path $downloadPath -DestinationPath $InstallationPath -Force
+
+        # Clean up the downloaded zip file
+        Remove-Item -Path $downloadPath -Force
+
+        # Update the version information in the JSON file
+        $versionObject = [PSCustomObject]@{
+            Version           = $latestVersion
+            LastLocalUpdate   = Get-Date
+            LastOnlineRelease = $latestRelease.published_at
+        }
+        $versionObject | ConvertTo-Json | Out-File -FilePath $versionFilePath -Force
+
+        Write-Host "Update completed successfully."
+    } else {
+        Write-Host "HandBrakeCLI is already up to date (version $currentVersion)."
+    }
+}
+
+<#
+.SYNOPSIS
     Presents a menu of options to the user and allows them to select one.
 .DESCRIPTION
     This function displays a menu of options and prompts the user to select one 
@@ -628,11 +772,13 @@ if (-not (Test-Path $MediaInfocliPath)) {
 
 # Handle no HandBrakeCLI Path given as parameter
 if (-not $PSBoundParameters.ContainsKey('HandBrakeCliPath')) {
-    $HandBrakeCliPath = (Get-Command HandBrakeCLI.exe -ErrorAction SilentlyContinue).Path 
-    if (-not $HandBrakeCliPath) {
-        $HandBrakeCliPath = "C:\Program Files\HandBrake\HandBrakeCLI.exe"
-    }
+    Update-HandbrakeCLI -InstallationPath "$PSScriptRoot\HandBrakeCli"
+    $HandBrakeCliPath = "$PSScriptRoot\HandBrakeCli"
+} else {
+    # Check version of HandbrakeCLi Path that was given and update if needed
+    Update-HandbrakeCLI -InstallationPath $HandBrakeCliPath
 }
+
 # Check if MediaInfo executable exists
 if (-not (Test-Path $HandBrakeCliPath)) {
     Write-Host "Error: HandBrake CLI executable not found at the specified path: $HandBrakeCliPath"
