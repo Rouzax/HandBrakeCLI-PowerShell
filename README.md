@@ -1,10 +1,11 @@
-# PowerShell Video Conversion Script
+# PowerShell Video Conversion Script using HandBrakeCLI
 
 This script is designed to automate the process of converting video files using HandBrakeCLI and MediaInfo CLI. It supports various options for source and output folders, preset selection, test encoding, and more. The script is primarily intended for Windows environments.
 
 ## Features
 
 - Convert video files using HandBrakeCLI
+- Check and download the latest version of HandBrakeCLI
 - Extract video information using MediaInfo CLI
 - Test encoding to check video quality and bitrate
 - Select presets for conversion
@@ -19,7 +20,7 @@ This script is designed to automate the process of converting video files using 
 
 ## Requirements
 
-- [HandBrakeCLI](https://handbrake.fr/downloads2.php)
+- [HandBrakeCLI](https://handbrake.fr/downloads2.php) (Will be downloaded if out of date or not available)
 - [MediaInfo CLI](https://mediaarea.net/en/MediaInfo/Download)
 
 ## Usage
