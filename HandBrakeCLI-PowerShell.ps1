@@ -315,10 +315,10 @@ function Start-HandBrakeCli {
         $OutputFilePath = $OutputFilePath -replace [regex]::Escape($currentExtension), $VideoExtensionPreset
 
         # Set the base command
-        $baseCommand = "& $HandBrakeCliPath"
+        $baseCommand = " &`"$HandBrakeCliPath`""
         
         # Set common arguments
-        $commonArguments = "--preset-import-file '$($PresetFile.Fullname)' --preset '$PresetName' --input '$SourceFilePath' --output '$OutputFilePath'"
+        $commonArguments = "--preset-import-file `"$($PresetFile.Fullname)`" --preset `"$PresetName`" --input `"$SourceFilePath`" --output `"$OutputFilePath`""
         
         # Check if $TestEncode is $true
         if ($TestEncode) {
@@ -378,8 +378,8 @@ function Update-HandbrakeCLI {
         [string]$InstallationPath
     )
 
-        # Extract the folder path without the executable
-        $FolderPath = Split-Path $InstallationPath
+    # Extract the folder path without the executable
+    $FolderPath = Split-Path $InstallationPath
 
     # Check if writing to $FolderPath requires elevated permissions
     try {
@@ -796,14 +796,20 @@ if (-not (Test-Path $MediaInfocliPath)) {
     Exit
 }
 
+
 # Handle no HandBrakeCLI Path given as parameter
 if (-not $PSBoundParameters.ContainsKey('HandBrakeCliPath')) {
-    Update-HandbrakeCLI -InstallationPath "$PSScriptRoot\HandBrakeCLI\HandBrakeCLI.exe"
-    $HandBrakeCliPath = "$PSScriptRoot\HandBrakeCLI\HandBrakeCLI.exe"
+    $HandBrakeCliPath = Join-Path -Path $PSScriptRoot -ChildPath "\HandBrakeCLI\HandBrakeCLI.exe"
 } else {
-    # Check version of HandbrakeCLi Path that was given and update if needed
-    Update-HandbrakeCLI -InstallationPath $HandBrakeCliPath
+    # Check if path is Folder 
+    $handBrakeCliFolder = (Get-Item -LiteralPath $HandBrakeCliPath) -is [System.IO.DirectoryInfo]
+    if ($handBrakeCliFolder) {
+        $HandBrakeCliPath = Join-Path -Path $HandBrakeCliPath -ChildPath "\HandBrakeCLI.exe"
+    }
 }
+
+# Check version of HandbrakeCLi Path that was given and update if needed
+Update-HandbrakeCLI -InstallationPath $HandBrakeCliPath
 
 # Check if Handbrake executable exists
 if (-not (Test-Path $HandBrakeCliPath)) {
