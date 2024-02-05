@@ -291,6 +291,8 @@ function Start-HandBrakeCli {
 
     $totalFilesToScan = ($videoFiles).Count
     $FilesScanned = 0
+    Write-Host "Start Encoding with Preset:  "-ForegroundColor DarkGray -NoNewline 
+    Write-Host $PresetName -ForegroundColor Cyan
 
     foreach ($videoFile in $videoFiles) {
         <# $videoFile is the current item #>
