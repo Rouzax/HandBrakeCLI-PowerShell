@@ -746,9 +746,9 @@ function Merge-VideoInfo {
         
         # Calculate percentage difference
         if ($sourceTotalRawBitrate -ne 0) {
-            $percentageDifference = [math]::Abs(($targetTotalRawBitrate - $sourceTotalRawBitrate) / $sourceTotalRawBitrate) * 100
+            $percentageDifference = (($targetTotalRawBitrate - $sourceTotalRawBitrate) / $sourceTotalRawBitrate) * 100
         } else {
-            $percentageDifference = [math]::Abs($targetTotalRawBitrate) * 100 # Handling division by zero
+            $percentageDifference = ($targetTotalRawBitrate) * 100 # Handling division by zero
         }
 
         if ($matchingTestVideo) {
