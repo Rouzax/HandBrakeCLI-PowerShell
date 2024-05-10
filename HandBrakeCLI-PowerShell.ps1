@@ -784,6 +784,8 @@ function Merge-VideoInfo {
     return $allVideoInfo
 }
 
+#* Start the script
+
 # Handle no MediaInfocliPath Path given as parameter
 if (-not $PSBoundParameters.ContainsKey('MediaInfocliPath')) {
     $MediaInfocliPath = (Get-Command MediaInfo.exe -ErrorAction SilentlyContinue).Path 

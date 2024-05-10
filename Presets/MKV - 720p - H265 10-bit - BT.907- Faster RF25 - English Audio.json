@@ -5,7 +5,7 @@
       "AudioCopyMask": [],
       "AudioEncoderFallback": "ac3",
       "AudioLanguageList": [
-        "nld"
+        "eng"
       ],
       "AudioList": [
         {
@@ -29,12 +29,13 @@
       "FileFormat": "av_mkv",
       "Folder": false,
       "FolderOpen": false,
-      "Mp4HttpOptimize": false,
+      "Optimize": false,
       "Mp4iPodCompatible": false,
       "PictureCropMode": 0,
       "PictureDeblockPreset": "off",
       "PictureDeinterlaceFilter": "off",
       "PictureCombDetectPreset": "off",
+      "PictureCombDetectCustom": "",
       "PictureDenoiseCustom": "",
       "PictureDenoiseFilter": "off",
       "PictureSharpenCustom": "",
@@ -43,8 +44,11 @@
       "PictureSharpenTune": "none",
       "PictureDetelecine": "off",
       "PictureDetelecineCustom": "",
-      "PictureColorspacePreset": "off",
+      "PictureColorspacePreset": "bt709",
+      "PictureColorspaceCustom": "",
       "PictureChromaSmoothPreset": "off",
+      "PictureChromaSmoothTune": "none",
+      "PictureChromaSmoothCustom": "",
       "PictureItuPAR": false,
       "PictureKeepRatio": true,
       "PicturePAR": "auto",
@@ -55,7 +59,7 @@
       "PictureForceHeight": 0,
       "PictureForceWidth": 0,
       "PicturePadMode": "none",
-      "PresetName": "MKV - 720p - H265 - Faster RF25 - Dutch Audio",
+      "PresetName": "MKV - 720p - H265 10-bit - BT.907- Faster RF25 - English Audio",
       "Type": 1,
       "SubtitleAddCC": false,
       "SubtitleAddForeignAudioSearch": false,
@@ -64,13 +68,12 @@
       "SubtitleBurnBDSub": false,
       "SubtitleBurnDVDSub": false,
       "SubtitleLanguageList": [
-        "nld",
-        "eng"
+        "nld"
       ],
-      "SubtitleTrackSelectionBehavior": "none",
+      "SubtitleTrackSelectionBehavior": "first",
       "VideoAvgBitrate": 0,
       "VideoColorMatrixCode": 0,
-      "VideoEncoder": "x265",
+      "VideoEncoder": "x265_10bit",
       "VideoFramerateMode": "vfr",
       "VideoGrayScale": false,
       "VideoScaler": "swscale",
@@ -81,14 +84,14 @@
       "VideoOptionExtra": "",
       "VideoQualityType": 2,
       "VideoQualitySlider": 25,
-      "VideoTwoPass": false,
-      "VideoTurboTwoPass": false,
+      "VideoMultiPass": false,
+      "VideoTurboMultiPass": false,
       "x264UseAdvancedOptions": false,
       "PresetDisabled": false,
       "MetadataPassthrough": false
     }
   ],
-  "VersionMajor": 50,
+  "VersionMajor": 53,
   "VersionMicro": 0,
   "VersionMinor": 0
 }
