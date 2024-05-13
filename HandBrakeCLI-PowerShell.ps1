@@ -87,7 +87,12 @@ function Get-VideoInfoRecursively {
         [string]$MediaInfoCliPath
     )
 
-    $totalFilesToScan = ($videoFiles).Count
+    if ($videoFiles.Count -gt 1) {
+        $totalFilesToScan = $videoFiles.Count
+    } else {
+        $totalFilesToScan = 1
+    }
+
     $FilesScanned = 0
 
     $allVideoInfo = @()
@@ -140,6 +145,9 @@ function Get-VideoInfoRecursively {
                 # Get Video dimensions
                 [int]$videoWidth = $stream.Width 
                 [int]$videoHeight = $stream.Height 
+
+                # Get Video Colour Space
+                [string]$videoColourSpace = $stream.colour_primaries
                 
                 # Get Video Bitrate
                 if ($stream.BitRate) {
@@ -199,23 +207,24 @@ function Get-VideoInfoRecursively {
         }
         
         $singleVideoInfo = [PSCustomObject]@{
-            ParentFolder    = $file.Directory.FullName
-            FileName        = $file.BaseName
-            FullName        = $file.FullName
-            VideoCodec      = $videoCodec
-            VideoWidth      = $videoWidth
-            VideoHeight     = $videoHeight
-            VideoBitrate    = $videoBitRate
-            TotalBitrate    = $totalBitRate
-            FileSize        = $(Format-Size -SizeInBytes $file.Length)
-            AudioCodecs     = $audioCodecs
-            AudioLanguages  = $audioLanguages
-            AudioChannels   = $audioChannels
-            FileSizeByte    = $file.Length
-            VideoDuration   = $VideoDuration   
-            Encoder         = $encodedApplication
-            RawVideoBitrate = $rawVideoBitRate   
-            RawTotalBitrate = $rawTotalBitRate  
+            ParentFolder     = $file.Directory.FullName
+            FileName         = $file.BaseName
+            FullName         = $file.FullName
+            VideoCodec       = $videoCodec
+            VideoWidth       = $videoWidth
+            VideoHeight      = $videoHeight
+            VideoColourSpace = $videoColourSpace
+            VideoBitrate     = $videoBitRate
+            TotalBitrate     = $totalBitRate
+            FileSize         = $(Format-Size -SizeInBytes $file.Length)
+            AudioCodecs      = $audioCodecs
+            AudioLanguages   = $audioLanguages
+            AudioChannels    = $audioChannels
+            FileSizeByte     = $file.Length
+            VideoDuration    = $VideoDuration   
+            Encoder          = $encodedApplication
+            RawVideoBitrate  = $rawVideoBitRate   
+            RawTotalBitrate  = $rawTotalBitRate  
         } 
                    
         if ($singleVideoInfo) {
@@ -243,6 +252,8 @@ function Get-VideoInfoRecursively {
 	Folder where encoded files will be saved.
 .PARAMETER PresetFile
 	JSON file containing HandBrake preset information.
+.PARAMETER PresetName
+	The Preset name we want to use.
 .PARAMETER HandBrakeCliPath
 	Path to the HandBrake CLI executable.
 .PARAMETER TestEncode
@@ -254,7 +265,7 @@ function Get-VideoInfoRecursively {
 .OUTPUTS
 	Encoded video files.
 .EXAMPLE
-	Start-HandBrakeCli -videoFiles $files -SourceFolder "C:\Source" -OutputFolder "C:\Output" -PresetFile "C:\Presets\preset.json" -HandBrakeCliPath "C:\Program Files\HandBrake\HandBrakeCLI.exe"
+	Start-HandBrakeCli -videoFiles $files -SourceFolder "C:\Source" -OutputFolder "C:\Output" -PresetFile "C:\Presets\preset.json" -PresetName "MKV - 720p - H265 10-bit - BT.709 - Faster RF25 - Dutch Audio" -HandBrakeCliPath "C:\Program Files\HandBrake\HandBrakeCLI.exe"
 #>
 function Start-HandBrakeCli {
     param (
@@ -268,7 +279,10 @@ function Start-HandBrakeCli {
         [string]$OutputFolder,
 
         [Parameter(Mandatory = $true)]
-        $PresetFile,
+        [string]$PresetFile,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PresetName,
 
         [Parameter(Mandatory = $true)]
         [string]$HandBrakeCliPath,
@@ -281,15 +295,37 @@ function Start-HandBrakeCli {
     )
 
     # Read the JSON preset file
-    $JsonContent = Get-Content -Path $PresetFile.FullName | ConvertFrom-Json
-
-    # Get the preset name
-    $PresetName = $JsonContent.PresetList[0].PresetName
+    $JsonContent = Get-Content -Path $PresetFile | ConvertFrom-Json
 
     # Get preset extension
-    $VideoExtensionPreset = ($JsonContent.PresetList[0].FileFormat).Replace("av_", ".")
+    # Initialize a variable to store the found FileFormat
+    $targetFileFormat = $null
 
-    $totalFilesToScan = ($videoFiles).Count
+    # Check if "ChildrenArray" is present
+    if ($jsonContent.PresetList.ChildrenArray) {
+        # Iterate through PresetList and find the target PresetName
+        foreach ($preset in $jsonContent.PresetList.ChildrenArray) {
+            if ($preset.PresetName -eq $PresetName) {
+                $targetFileFormat = $preset.FileFormat
+                break
+            }
+        }
+    } else {
+        # "ChildrenArray" not present, directly iterate through PresetList
+        foreach ($preset in $jsonContent.PresetList) {
+            if ($preset.PresetName -eq $PresetName) {
+                $targetFileFormat = $preset.FileFormat
+                break
+            }
+        }
+    }
+    $VideoExtensionPreset = $targetFileFormat.Replace("av_", ".")
+
+    if ($videoFiles.Count -gt 1) {
+        $totalFilesToScan = $videoFiles.Count
+    } else {
+        $totalFilesToScan = 1
+    }
     $FilesScanned = 0
     Write-Host "Start Encoding with Preset:  "-ForegroundColor DarkGray -NoNewline 
     Write-Host $PresetName -ForegroundColor Cyan
@@ -320,7 +356,7 @@ function Start-HandBrakeCli {
         $baseCommand = " &`"$HandBrakeCliPath`""
         
         # Set common arguments
-        $commonArguments = "--preset-import-file `"$($PresetFile.Fullname)`" --preset `"$PresetName`" --input `"$SourceFilePath`" --output `"$OutputFilePath`""
+        $commonArguments = "--preset-import-file `"$PresetFile`" --preset `"$PresetName`" --input `"$SourceFilePath`" --output `"$OutputFilePath`""
         
         # Check if $TestEncode is $true
         if ($TestEncode) {
@@ -354,12 +390,289 @@ function Start-HandBrakeCli {
 
 <#
 .SYNOPSIS
+    Updates MediaInfoCLI to the latest version.
+.DESCRIPTION
+    This function checks the local version of MediaInfoCLI and updates it to the latest
+    version available on GitHub if a newer version exists. It also verifies if the script
+    has the necessary permissions to write to the specified installation path.
+.PARAMETER MediaInfoCLIPath
+    Specifies the path where MediaInfoCLI should be installed or updated. Ensure the
+    script has write permissions to this location. If elevation is required, the script
+    prompts the user to run with administrator privileges.
+.INPUTS
+    None
+.OUTPUTS 
+    None
+.EXAMPLE
+    Update-MediaInfoCLI -MediaInfoCLIPath "C:\Program Files\HandBrake\MediaInfoCLI.exe"
+    # Checks and updates MediaInfoCLI to the latest version in the specified path.
+.EXAMPLE
+    Update-MediaInfoCLI -MediaInfoCLIPath "D:\HandBrake\MediaInfoCLI.exe"
+    # Checks and updates MediaInfoCLI to the latest version in the specified path.
+#>
+function Update-MediaInfoCLI {
+    param(
+        [string]$MediaInfoCLIPath
+    )
+    Write-Host "`nChecking if MediaInfo CLI is available and update is needed" -ForegroundColor Magenta
+  
+    # Extract the folder path without the executable
+    $FolderPath = Split-Path $MediaInfoCLIPath
+    
+    # Check if $MediaInfoCLIPath already exists
+    if (Test-Path $MediaInfoCLIPath) {
+        Write-Host "    MediaInfo CLI is already installed at: " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "'$MediaInfoCLIPath'" -ForegroundColor Cyan  
+        $fileVersion = (Get-Command $MediaInfoCLIPath).FileVersionInfo.ProductVersion
+    } else {
+        # MediaInfoCLI is not installed at the specified path
+        Write-Host "    MediaInfo CLI is not installed at: " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "'$MediaInfoCLIPath'" -ForegroundColor Cyan  
+        Write-Host "    Will try to get the latest version online" -ForegroundColor DarkGray 
+    }
+    
+    # Check if writing to $FolderPath requires elevated permissions
+    try {
+        # Check if the folder exists, if not create it
+        if (-not (Test-Path $FolderPath)) {
+            New-Item -ItemType Directory -Path $FolderPath -ErrorAction Stop | Out-Null
+        }
+
+        # Check if writing to $FolderPath requires elevated permissions
+        $testPath = Join-Path $FolderPath "Test-Permission.txt"
+        $null | Out-File -FilePath $testPath -Force -ErrorAction Stop
+        Remove-Item -Path $testPath -Force -ErrorAction Stop
+    } catch {
+        if ($fileVersion) {
+            Write-Host "    Insufficient permissions to write to: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'$FolderPath'" -ForegroundColor Cyan
+
+            Write-Host "    Will use existing version: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host $fileVersion -ForegroundColor Cyan
+            return
+        } else {
+            Write-Host "    Insufficient permissions to write to: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'$FolderPath'" -ForegroundColor Cyan
+
+            Write-Host "    No current version found" -ForegroundColor DarkRed
+            Write-Host "    Please run the script as an administrator." -ForegroundColor DarkRed
+            Exit
+        }
+    }
+
+    # Define version file path
+    $versionFilePath = Join-Path $FolderPath "MediaInfoCLI-Version.json"
+
+    if (Test-Path $MediaInfoCLIPath) {
+        # MediaInfoCLI is installed
+        if (Test-Path $versionFilePath) {
+            # Read the version information from the JSON file
+            $versionInfo = Get-Content $versionFilePath | ConvertFrom-Json
+            $currentVersion = $versionInfo.Version
+            $lastLocalUpdate = $versionInfo.LastLocalUpdate
+        } else {
+            # No version file found, write current version and date to MediaInfoCLI-Version.json
+            $lastLocalUpdate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            $currentVersion = $fileVersion
+            # Save the version information to a JSON file
+            $versionObject = [PSCustomObject]@{
+                Version         = $currentVersion
+                LastLocalUpdate = $lastLocalUpdate
+            }
+            $versionObject | ConvertTo-Json | Out-File -FilePath $versionFilePath -Force
+        }
+        
+        # Display installed version and last update date
+        Write-Host "    Installed version of MediaInfo CLI: " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$currentVersion" -ForegroundColor Cyan
+        Write-Host "    Last local update: " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$lastLocalUpdate" -ForegroundColor Cyan -NoNewline 
+        Write-Host "." -ForegroundColor DarkGray 
+    } else {
+        # MediaInfoCLI is not installed
+        $currentVersion = "0.0"
+        $lastLocalUpdate = $null
+    }
+
+    # Define the download URL for MediaInfo_CLI
+    $MediaInfoCLIdownloadUrl = "https://mediaarea.net/en/MediaInfo/Download/Windows"
+
+    try {
+        # Use Invoke-WebRequest to fetch the HTML content of the download page
+        $response = Invoke-WebRequest -Uri $MediaInfoCLIdownloadUrl -UseBasicParsing -ErrorAction Stop
+    } catch {
+        if ($fileVersion) {
+            Write-Host "    Failed to access the download page: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'$MediaInfoCLIdownloadUrl'" -ForegroundColor Cyan
+
+            Write-Host "    Will use existing version: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host $fileVersion -ForegroundColor Cyan
+            return
+        } else {
+            Write-Host "    Failed to access the download page: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'$MediaInfoCLIdownloadUrl'" -ForegroundColor Cyan
+
+            Write-Host "    No current version found" -ForegroundColor DarkRed
+            Write-Host "    Please check your internet connection or try again later." -ForegroundColor DarkRed
+            Exit
+        }
+    }
+
+    # Parse the HTML response to extract the download links
+    $downloadLinks = $response.Links | Where-Object { $_.href -match "/MediaInfo_CLI_[\d.]+_Windows_x64.zip" }
+
+    # Check if download links are found
+    if ($downloadLinks.Count -eq 0) {
+        if ($fileVersion) {
+            Write-Host "    No download links found at: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'$MediaInfoCLIdownloadUrl'" -ForegroundColor Cyan
+
+            Write-Host "    Did not find: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'MediaInfo_CLI_(x.x)_Windows_x64.zip'" -ForegroundColor Cyan
+
+            Write-Host "    Will use existing version: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host $fileVersion -ForegroundColor Cyan
+            return
+        } else {
+            Write-Host "    No download links found at: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'$MediaInfoCLIdownloadUrl'" -ForegroundColor Cyan
+
+            Write-Host "    Did not find: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'MediaInfo_CLI_(x.x)_Windows_x64.zip'" -ForegroundColor Cyan
+
+            Write-Host "    No current version found" -ForegroundColor DarkRed
+            Write-Host "    Please check your internet connection or try again later." -ForegroundColor DarkRed
+            Exit
+        }
+    }
+
+    # Initialize variables to store version and latest link
+    $latestVersion = $null
+    $latestLink = $null
+
+    # Iterate through each download link to find the latest version
+    foreach ($link in $downloadLinks) {
+        if ($link.href -match '/MediaInfo_CLI_([\d.]+)_Windows_x64.zip') {
+            $version = $Matches[1]
+            if (-not $latestVersion -or [version]::Parse($version) -gt [version]::Parse($latestVersion)) {
+                $latestVersion = $version
+                $latestLink = $link
+            }
+        }
+    }
+    
+    # Check if latest link is found
+    if (-not $latestLink) {
+        if ($fileVersion) {
+            Write-Host "    Did not find: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'MediaInfo_CLI_(x.x)_Windows_x64.zip'" -ForegroundColor Cyan
+
+            Write-Host "    Will use existing version: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host $fileVersion -ForegroundColor Cyan
+            return
+        } else {
+            Write-Host "    Did not find: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'MediaInfo_CLI_(x.x)_Windows_x64.zip'" -ForegroundColor Cyan
+
+            Write-Host "    No current version found" -ForegroundColor DarkRed
+            Write-Host "    Please check your internet connection or try again later." -ForegroundColor DarkRed
+            Exit
+        }
+    }
+
+    # Construct the full download URL
+    $downloadUrl = "https:" + $latestLink.href
+    
+    if ($null -eq $downloadUrl) {
+         # Download URL is empty
+        if ($fileVersion) {
+            Write-Host "    No download links found at: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'$MediaInfoCLIdownloadUrl'" -ForegroundColor Cyan
+
+            Write-Host "    Will use existing version: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host $fileVersion -ForegroundColor Cyan
+            return
+        } else {
+            Write-Host "    No download links found at: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'$MediaInfoCLIdownloadUrl'" -ForegroundColor Cyan
+
+            Write-Host "    No current version found" -ForegroundColor DarkRed
+            Write-Host "    Please check your internet connection or try again later." -ForegroundColor DarkRed
+            Exit
+        }
+    }
+
+    # Compare versions
+    if ($latestVersion -gt $currentVersion) {
+        # Newer version available, proceed with update
+
+        # Display updating message
+        Write-Host "    Updating MediaInfoCLI from version " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$currentVersion " -ForegroundColor Cyan -NoNewline 
+        Write-Host "to " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$latestVersion" -ForegroundColor Cyan -NoNewline 
+        Write-Host "." -ForegroundColor DarkGray 
+
+        # Define download path
+        $downloadPath = Join-Path $FolderPath "MediaInfo_CLI_$($latestVersion)_Windows_x64.zip"
+
+        # Download the zip file
+        try {
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath -ErrorAction Stop
+        } catch {
+            if ($fileVersion) {
+                Write-Host "    Failed to download MediaInfoCLI." -ForegroundColor DarkYellow
+    
+                Write-Host "    Will use existing version: " -ForegroundColor DarkYellow -NoNewline
+                Write-Host $fileVersion -ForegroundColor Cyan
+                return
+            } else {
+                Write-Host "    Failed to download MediaInfoCLI." -ForegroundColor DarkRed
+    
+                Write-Host "    No current version found" -ForegroundColor DarkRed
+                Write-Host "    Please check your internet connection or try again later." -ForegroundColor DarkRed
+                Exit
+            }
+        }
+
+        # Extract the contents
+        Write-Host "    Extracting files to " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$FolderPath" -ForegroundColor Cyan -NoNewline 
+        Write-Host "." -ForegroundColor DarkGray 
+        try {
+            Expand-Archive -Path $downloadPath -DestinationPath $FolderPath -Force -ErrorAction Stop
+        } catch {
+            Write-Host "    Failed to extract files. Aborting update." -ForegroundColor DarkRed
+            Write-Host "    Error: $_" -ForegroundColor DarkRed
+            exit
+        }
+
+        # Clean up the downloaded zip file
+        Remove-Item -Path $downloadPath -Force
+
+        # Update the version information in the JSON file
+        $versionObject = [PSCustomObject]@{
+            Version         = $latestVersion
+            LastLocalUpdate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        }
+        $versionObject | ConvertTo-Json | Out-File -FilePath $versionFilePath -Force
+
+        Write-Host "    Update completed successfully." -ForegroundColor DarkGray
+    } else {
+        Write-Host "    MediaInfoCLI is already up to date (version :" -ForegroundColor DarkGray -NoNewline 
+        Write-Host "$currentVersion" -ForegroundColor Cyan -NoNewline
+        Write-Host ")." -ForegroundColor DarkGray 
+    }
+}
+
+<#
+.SYNOPSIS
     Updates HandBrakeCLI to the latest version.
 .DESCRIPTION
     This function checks the local version of HandBrakeCLI and updates it to the latest
     version available on GitHub if a newer version exists. It also verifies if the script
     has the necessary permissions to write to the specified installation path.
-.PARAMETER InstallationPath
+.PARAMETER HandbrakeCLIPath
     Specifies the path where HandBrakeCLI should be installed or updated. Ensure the
     script has write permissions to this location. If elevation is required, the script
     prompts the user to run with administrator privileges.
@@ -368,20 +681,35 @@ function Start-HandBrakeCli {
 .OUTPUTS 
     None
 .EXAMPLE
-    Update-HandbrakeCLI -InstallationPath "C:\Program Files\HandBrake\HandBrakeCLI.exe"
+    Update-HandbrakeCLI -HandbrakeCLIPath "C:\Program Files\HandBrake\HandBrakeCLI.exe"
     # Checks and updates HandBrakeCLI to the latest version in the specified path.
 .EXAMPLE
-    Update-HandbrakeCLI -InstallationPath "D:\HandBrake\HandBrakeCLI.exe"
+    Update-HandbrakeCLI -HandbrakeCLIPath "D:\HandBrake\HandBrakeCLI.exe"
     # Checks and updates HandBrakeCLI to the latest version in the specified path.
 #>
 
 function Update-HandbrakeCLI {
     param(
-        [string]$InstallationPath
+        [string]$HandbrakeCLIPath
     )
 
+    # Display message indicating script is checking for HandBrakeCLI availability and update necessity
+    Write-Host "`nChecking if HandBrakeCLI is available and update is needed" -ForegroundColor Magenta
+
     # Extract the folder path without the executable
-    $FolderPath = Split-Path $InstallationPath
+    $FolderPath = Split-Path $HandbrakeCLIPath
+
+    # Check if $MediaInfoCLIPath already exists
+    if (Test-Path $HandbrakeCLIPath) {
+        Write-Host "    HandBrake CLI is already installed at: " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "'$HandbrakeCLIPath'" -ForegroundColor Cyan  
+        $installed = $true
+    } else {
+        # MediaInfoCLI is not installed at the specified path
+        Write-Host "    HandBrake CLI is not installed at: " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "'$HandbrakeCLIPath'" -ForegroundColor Cyan  
+        Write-Host "    Will try to get the latest version online" -ForegroundColor DarkGray 
+    }
 
     # Check if writing to $FolderPath requires elevated permissions
     try {
@@ -394,25 +722,26 @@ function Update-HandbrakeCLI {
         $testPath = Join-Path $FolderPath "Test-Permission.txt"
         $null | Out-File -FilePath $testPath -Force -ErrorAction Stop
         Remove-Item -Path $testPath -Force -ErrorAction Stop
-    } catch [System.UnauthorizedAccessException] {
-        Write-Host "Insufficient permissions to write to $FolderPath." -ForegroundColor DarkRed
-        Write-Host "Please run the script as an administrator." -ForegroundColor DarkRed
-        $ErrorMessage = $_.Exception.Message
-        Write-Host "       Error Message: $ErrorMessage" -ForegroundColor DarkRed 
-        Exit
-    } catch [System.Exception] {
-        Write-Host "Insufficient permissions to write to $FolderPath." -ForegroundColor DarkRed
-        Write-Host "Please run the script as an administrator." -ForegroundColor DarkRed
-        $ErrorMessage = $_.Exception.Message
-        Write-Host "       Error Message: $ErrorMessage" -ForegroundColor DarkRed 
-        Exit
+    } catch {
+        # Error occurred while checking permissions
+        if ($installed) {
+            Write-Host "    Insufficient permissions to write to: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'$FolderPath'" -ForegroundColor Cyan
+
+            Write-Host "    Will use existing version." -ForegroundColor DarkYellow
+            return
+        } else {
+            Write-Host "    Insufficient permissions to write to: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'$FolderPath'" -ForegroundColor Cyan
+
+            Write-Host "    No current version found" -ForegroundColor DarkRed
+            Write-Host "    Please run the script as an administrator." -ForegroundColor DarkRed
+            Exit
+        }
     }
 
     # Define version file path
     $versionFilePath = Join-Path $FolderPath "HandBrakeCLI-Version.json"
-
-    # Check if HandbrakeCLI is installed
-    $handbrakeCLIPath = Join-Path $FolderPath "HandBrakeCLI.exe"
 
     if (Test-Path $handbrakeCLIPath) {
         # HandbrakeCLI is installed
@@ -424,8 +753,8 @@ function Update-HandbrakeCLI {
             $lastOnlineRelease = $versionInfo.LastOnlineRelease
         } else {
             # No version file found, download and get version
-            $currentVersion = (Get-Command $handbrakeCLIPath).FileVersionInfo.ProductVersion
-            $lastLocalUpdate = Get-Date
+            $currentVersion = "0.0.0"
+            $lastLocalUpdate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
             $lastOnlineRelease = $null
 
             # Save the version information to a JSON file
@@ -437,13 +766,13 @@ function Update-HandbrakeCLI {
             $versionObject | ConvertTo-Json | Out-File -FilePath $versionFilePath -Force
         }
 
-        Write-Host "`n    Current installed version of HandBrakeCLI: " -ForegroundColor DarkGray -NoNewline 
+        Write-Host "    Installed version of HandBrake CLI: " -ForegroundColor DarkGray -NoNewline 
         Write-Host "$currentVersion" -ForegroundColor Cyan
         Write-Host "    Last local update: " -ForegroundColor DarkGray -NoNewline 
         Write-Host "$lastLocalUpdate" -ForegroundColor Cyan -NoNewline 
         Write-Host "." -ForegroundColor DarkGray 
 
-        if ($lastOnlineRelease -ne $null) {
+        if ($null -ne $lastOnlineRelease) {
             Write-Host "    Last online release: " -ForegroundColor DarkGray -NoNewline 
             Write-Host "$lastOnlineRelease" -ForegroundColor Cyan -NoNewline 
             Write-Host "." -ForegroundColor DarkGray 
@@ -453,29 +782,83 @@ function Update-HandbrakeCLI {
         $currentVersion = "0.0.0"
         $lastLocalUpdate = $null
         $lastOnlineRelease = $null
-        Write-Host "    No local version of HandBrakeCLI found." -ForegroundColor DarkGray
     }
 
     # Define the GitHub releases URL
     $githubApiUrl = 'https://api.github.com/repos/HandBrake/HandBrake/releases/latest'
     
-    # Get the latest release information
-    $latestRelease = Invoke-RestMethod -Uri $githubApiUrl
+
+
+    try {
+        # Use Invoke-WebRequest to fetch the HTML content of the download page
+        # $response = Invoke-WebRequest -Uri $MediaInfoCLIdownloadUrl -UseBasicParsing -ErrorAction Stop
+
+        # Get the latest release information
+        $latestRelease = Invoke-RestMethod -Uri $githubApiUrl
+    } catch {
+        if ($installed) {
+            Write-Host "    Failed to access the download page: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'$githubApiUrl'" -ForegroundColor Cyan
+
+            Write-Host "    Will use existing version." -ForegroundColor DarkYellow 
+            return
+        } else {
+            Write-Host "    Failed to access the download page: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'$githubApiUrl'" -ForegroundColor Cyan
+
+            Write-Host "    No current version found" -ForegroundColor DarkRed
+            Write-Host "    Please check your internet connection or try again later." -ForegroundColor DarkRed
+            Exit
+        }
+    }
+
 
     # Extract version information from the latest release
     $latestVersion = $latestRelease.tag_name
     $assets = $latestRelease.assets
 
     # Find the HandBrakeCLI asset with the correct name pattern
-    $handbrakeCLIAsset = $assets | Where-Object { $_.name -match 'HandBrakeCLI-\d+\.\d+\.\d+-win-x86_64\.zip' }
+    $handbrakeCLIAsset = $assets | Where-Object { $_.name -match "HandBrakeCLI-$latestVersion-win-x86_64\.zip$" }
 
-    if ($handbrakeCLIAsset -eq $null) {
-        Write-Host "    No HandBrakeCLI asset found in the latest release with the correct name pattern." -ForegroundColor DarkGray
-        return
+    if ($null -eq $handbrakeCLIAsset) {
+        # Check if download links are found
+        if ($installed) {
+            Write-Host "    Did not find: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'HandBrakeCLI-$latestVersion-win-x86_64.zip'" -ForegroundColor Cyan
+
+            Write-Host "    Will use existing version." -ForegroundColor DarkYellow
+            return
+        } else {
+            Write-Host "    Did not find: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'HandBrakeCLI-$latestVersion-win-x86_64.zip'" -ForegroundColor Cyan
+
+            Write-Host "    No current version found" -ForegroundColor DarkRed
+            Write-Host "    Please check your internet connection or try again later." -ForegroundColor DarkRed
+            Exit
+        }
     }
 
     # Extract download information
-    $downloadUrl = $handbrakeCLIAsset.browser_download_url[0]
+    $downloadUrl = $handbrakeCLIAsset.browser_download_url
+
+    if ($null -eq $downloadUrl) {
+        # Download URL is empty
+        if ($installed) {
+            Write-Host "    No download links found at: " -ForegroundColor DarkYellow -NoNewline
+            Write-Host "'$githubApiUrl'" -ForegroundColor Cyan
+
+            Write-Host "    Will use existing version." -ForegroundColor DarkYellow 
+            return
+        } else {
+            Write-Host "    No download links found at: " -ForegroundColor DarkRed -NoNewline
+            Write-Host "'$githubApiUrl'" -ForegroundColor Cyan
+
+            Write-Host "    No current version found" -ForegroundColor DarkRed
+            Write-Host "    Please check your internet connection or try again later." -ForegroundColor DarkRed
+            Exit
+        }
+    }
+
 
     # Compare versions
     if ($latestVersion -gt $currentVersion) {
@@ -489,19 +872,34 @@ function Update-HandbrakeCLI {
         $downloadPath = Join-Path $FolderPath "HandBrakeCLI-$latestVersion-win-x86_64.zip"
 
         # Download the zip file
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
+        try {
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath -ErrorAction Stop
+        } catch {
+            if ($fileVersion) {
+                Write-Host "    Failed to download HandBrakeCLI." -ForegroundColor DarkYellow
 
-        # Check if version file path is defined
-        if (-not $versionFilePath) {
-            Write-Host "    Version file path is not defined. Aborting update." -ForegroundColor DarkGray
-            return
+                Write-Host "    Will use existing version. " -ForegroundColor DarkYellow
+                return
+            } else {
+                Write-Host "    Failed to download HandBrakeCLI." -ForegroundColor DarkRed
+
+                Write-Host "    No current version found" -ForegroundColor DarkRed
+                Write-Host "    Please check your internet connection or try again later." -ForegroundColor DarkRed
+                Exit
+            }
         }
 
         # Extract the contents
         Write-Host "    Extracting files to " -ForegroundColor DarkGray -NoNewline 
         Write-Host "$FolderPath" -ForegroundColor Cyan -NoNewline 
         Write-Host "." -ForegroundColor DarkGray 
-        Expand-Archive -Path $downloadPath -DestinationPath $FolderPath -Force
+        try {
+            Expand-Archive -Path $downloadPath -DestinationPath $FolderPath -Force -ErrorAction Stop
+        } catch {
+            Write-Host "    Failed to extract files. Aborting update." -ForegroundColor DarkRed
+            Write-Host "    Error: $_" -ForegroundColor DarkRed
+            exit
+        }
 
         # Clean up the downloaded zip file
         Remove-Item -Path $downloadPath -Force
@@ -509,7 +907,7 @@ function Update-HandbrakeCLI {
         # Update the version information in the JSON file
         $versionObject = [PSCustomObject]@{
             Version           = $latestVersion
-            LastLocalUpdate   = Get-Date
+            LastLocalUpdate   = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
             LastOnlineRelease = $latestRelease.published_at
         }
         $versionObject | ConvertTo-Json | Out-File -FilePath $versionFilePath -Force
@@ -753,22 +1151,24 @@ function Merge-VideoInfo {
 
         if ($matchingTestVideo) {
             $mergedObject = [PSCustomObject]@{
-                FileName                   = $sourceVideo.FileName
-                "Source Codec"             = $sourceVideo."Source Codec"
-                "Source Video Width"       = $sourceVideo."Source Video Width"
-                "Source Video Height"      = $sourceVideo."Source Video Height"
-                "Source Video Bitrate"     = $sourceVideo."Source Video Bitrate"
-                "Source Total Bitrate"     = $sourceVideo."Source Total Bitrate"
-                "Source Total Raw Bitrate" = $sourceVideo."Source Total Raw Bitrate"
-                'Reduction in Bitrate %'   = [math]::Round($percentageDifference, 2)
-                "Source Duration"          = $sourceVideo."Source Duration"
-                "Target Codec"             = $matchingTestVideo."Target Codec"
-                "Target Video Width"       = $matchingTestVideo."Target Video Width"
-                "Target Video Height"      = $matchingTestVideo."Target Video Height"
-                "Target Video Bitrate"     = $matchingTestVideo."Target Video Bitrate"
-                "Target Total Bitrate"     = $matchingTestVideo."Target Total Bitrate"
-                "Target Total Raw Bitrate" = $matchingTestVideo."Target Total Raw Bitrate"
-                "Target Duration"          = $matchingTestVideo."Target Duration"
+                FileName                    = $sourceVideo.FileName
+                "Source Codec"              = $sourceVideo."Source Codec"
+                "Source Video Width"        = $sourceVideo."Source Video Width"
+                "Source Video Height"       = $sourceVideo."Source Video Height"
+                "Source Video Colour Space" = $sourceVideo."Source Video Colour Space"
+                "Source Video Bitrate"      = $sourceVideo."Source Video Bitrate"
+                "Source Total Bitrate"      = $sourceVideo."Source Total Bitrate"
+                "Source Total Raw Bitrate"  = $sourceVideo."Source Total Raw Bitrate"
+                'Reduction in Bitrate %'    = [math]::Round($percentageDifference, 2)
+                "Source Duration"           = $sourceVideo."Source Duration"
+                "Target Codec"              = $matchingTestVideo."Target Codec"
+                "Target Video Width"        = $matchingTestVideo."Target Video Width"
+                "Target Video Height"       = $matchingTestVideo."Target Video Height"
+                "Target Video Colour Space" = $matchingTestVideo."Target Video Colour Space"
+                "Target Video Bitrate"      = $matchingTestVideo."Target Video Bitrate"
+                "Target Total Bitrate"      = $matchingTestVideo."Target Total Bitrate"
+                "Target Total Raw Bitrate"  = $matchingTestVideo."Target Total Raw Bitrate"
+                "Target Duration"           = $matchingTestVideo."Target Duration"
             }
             
             $allVideoInfo += $mergedObject
@@ -786,20 +1186,16 @@ function Merge-VideoInfo {
 
 #* Start the script
 
-# Handle no MediaInfocliPath Path given as parameter
+# Handle no HandBrakeCLI Path given as parameter
 if (-not $PSBoundParameters.ContainsKey('MediaInfocliPath')) {
-    $MediaInfocliPath = (Get-Command MediaInfo.exe -ErrorAction SilentlyContinue).Path 
-    if (-not $MediaInfocliPath) {
-        $MediaInfocliPath = "C:\Program Files\MediaInfo_CLI\MediaInfo.exe"
+    $MediaInfocliPath = Join-Path -Path $PSScriptRoot -ChildPath "\MediaInfoCLI\MediaInfo.exe"
+} else {
+    # Check if path is Folder 
+    $MediaInfocliFolder = (Get-Item -LiteralPath $MediaInfocliPath) -is [System.IO.DirectoryInfo]
+    if ($MediaInfocliFolder) {
+        $MediaInfocliPath = Join-Path -Path $MediaInfocliPath -ChildPath "\MediaInfo.exe"
     }
 }
-# Check if MediaInfo executable exists
-if (-not (Test-Path $MediaInfocliPath)) {
-    Write-Host "Error: MediaInfo CLI executable not found at the specified path: $MediaInfocliPath"
-    Write-Host "Please provide the correct path to the MediaInfo CLI executable using the -MediaInfocliPath parameter."
-    Exit
-}
-
 
 # Handle no HandBrakeCLI Path given as parameter
 if (-not $PSBoundParameters.ContainsKey('HandBrakeCliPath')) {
@@ -813,14 +1209,11 @@ if (-not $PSBoundParameters.ContainsKey('HandBrakeCliPath')) {
 }
 
 # Check version of HandbrakeCLi Path that was given and update if needed
-Update-HandbrakeCLI -InstallationPath $HandBrakeCliPath
+Update-HandbrakeCLI -HandbrakeCLIPath $HandBrakeCliPath
 
-# Check if Handbrake executable exists
-if (-not (Test-Path $HandBrakeCliPath)) {
-    Write-Host "Error: HandBrake CLI executable not found at the specified path: $HandBrakeCliPath"
-    Write-Host "Please provide the correct path to the Handbrake CLI executable using the HandBrakeCliPath parameter."
-    Exit
-}
+# Check version of HandbrakeCLi Path that was given and update if needed
+Update-MediaInfoCLI -MediaInfoCLIPath $MediaInfocliPath
+
 
 # Check if the OutputFolder exists and create it if not
 if (-not (Test-Path -Path $OutputFolder -PathType 'Container')) {
@@ -829,14 +1222,34 @@ if (-not (Test-Path -Path $OutputFolder -PathType 'Container')) {
 }
 
 # Get input if no parameters defined, list all json presets
-if ($PSBoundParameters.ContainsKey('PresetFile')) {
-    Write-Host "Preset File given as Parameter"
-    $PresetFile = Get-Item -Path $PresetFile
+if (!$PSBoundParameters.ContainsKey('PresetFile')) {
+    # Load default presets from folder since none are provider as parameter
+    $PresetFile = "$PSScriptRoot\Presets\Presets.json"
+} 
+# Load JSON file content
+$handbrakePresetsJSON = Get-Content -Path $PresetFile | ConvertFrom-Json
+
+# Initialize an empty array to store presets
+$presetNames = @()
+
+# Check if "ChildrenArray" is present
+if ($handbrakePresetsJSON.PresetList.ChildrenArray) {
+    # Iterate through PresetList and extract PresetName values
+    foreach ($preset in $handbrakePresetsJSON.PresetList.ChildrenArray) {
+        $presetNames += $preset.PresetName
+    }
 } else {
-    $PresetFiles = Get-ChildItem -Path $PSScriptRoot\Presets -Filter *.json -File
-    $SelectedPreset = Select-MenuOption -MenuOptions $PresetFiles.BaseName -MenuQuestion "Handbrake Preset"
-    $PresetFile = $PresetFiles | Where-Object { $_.BaseName -match $SelectedPreset }
+    # "ChildrenArray" not present, directly iterate through PresetList
+    foreach ($preset in $handbrakePresetsJSON.PresetList) {
+        $presetNames += $preset.PresetName
+    }
 }
+
+# Sort the array of preset names alphabetically
+$presetNames = $presetNames | Sort-Object
+
+# Let user select which preset to use, if only one is in the file auto select that
+$SelectedPreset = Select-MenuOption -MenuOptions $presetNames -MenuQuestion "Handbrake Preset"
 
 if ($TestEncode) {
     # Do not start the full encode yet as we need to run a small test encode
@@ -876,15 +1289,16 @@ $sourceVideoInfo = Get-VideoInfoRecursively -videoFiles $sourceVideoFiles -Media
 foreach ($videoFile in $sourceVideoInfo) {
     # Construct an object to hold the values
     $SourceVideoObj += [PSCustomObject]@{
-        FileName                   = $($videoFile.FileName)
-        "Source FullName"          = $($videoFile.FullName)
-        "Source Codec"             = $($videoFile.VideoCodec)
-        "Source Video Width"       = $($videoFile.VideoWidth)
-        "Source Video Height"      = $($videoFile.VideoHeight)
-        "Source Video Bitrate"     = $($videoFile.VideoBitrate)
-        "Source Total Bitrate"     = $($videoFile.TotalBitrate)
-        "Source Total Raw Bitrate" = $($videoFile.RawTotalBitrate)
-        "Source Duration"          = $($videoFile.VideoDuration)
+        FileName                    = $($videoFile.FileName)
+        "Source FullName"           = $($videoFile.FullName)
+        "Source Codec"              = $($videoFile.VideoCodec)
+        "Source Video Width"        = $($videoFile.VideoWidth)
+        "Source Video Height"       = $($videoFile.VideoHeight)
+        "Source Video Colour Space" = $($videoFile.VideoColourSpace)
+        "Source Video Bitrate"      = $($videoFile.VideoBitrate)
+        "Source Total Bitrate"      = $($videoFile.TotalBitrate)
+        "Source Total Raw Bitrate"  = $($videoFile.RawTotalBitrate)
+        "Source Duration"           = $($videoFile.VideoDuration)
     }
 }
 
@@ -895,7 +1309,7 @@ while (-not $startFullEncode) {
     $targetVideoFiles = @()
     
     # Start the test encodes
-    Start-HandBrakeCli -videoFiles $sourceVideoInfo -SourceFolder $SourceFolder -OutputFolder $OutputFolder -PresetFile $PresetFile -HandBrakeCliPath $HandBrakeCliPath -TestEncode -TestEncodeSeconds $TestEncodeSeconds
+    Start-HandBrakeCli -videoFiles $sourceVideoInfo -SourceFolder $SourceFolder -OutputFolder $OutputFolder -PresetFile $PresetFile -PresetName $SelectedPreset -HandBrakeCliPath $HandBrakeCliPath -TestEncode -TestEncodeSeconds $TestEncodeSeconds
 
     $FilesParams = @{
         Recurse = $true
@@ -909,15 +1323,16 @@ while (-not $startFullEncode) {
     foreach ($videoFile in $targetVideoInfo) {
         # Construct an object to hold the values
         $targetVideoObj += [PSCustomObject]@{
-            FileName                   = $($videoFile.FileName)
-            "Target FullName"          = $($videoFile.FullName)
-            "Target Codec"             = $($videoFile.VideoCodec)
-            "Target Video Width"       = $($videoFile.VideoWidth)
-            "Target Video Height"      = $($videoFile.VideoHeight)
-            "Target Video Bitrate"     = $($videoFile.VideoBitrate)
-            "Target Total Bitrate"     = $($videoFile.TotalBitrate)
-            "Target Total Raw Bitrate" = $($videoFile.RawTotalBitrate)
-            "Target Duration"          = $($videoFile.VideoDuration)
+            FileName                    = $($videoFile.FileName)
+            "Target FullName"           = $($videoFile.FullName)
+            "Target Codec"              = $($videoFile.VideoCodec)
+            "Target Video Width"        = $($videoFile.VideoWidth)
+            "Target Video Height"       = $($videoFile.VideoHeight)
+            "Target Video Colour Space" = $($videoFile.VideoColourSpace)
+            "Target Video Bitrate"      = $($videoFile.VideoBitrate)
+            "Target Total Bitrate"      = $($videoFile.TotalBitrate)
+            "Target Total Raw Bitrate"  = $($videoFile.RawTotalBitrate)
+            "Target Duration"           = $($videoFile.VideoDuration)
         }
     }
 
@@ -927,8 +1342,8 @@ while (-not $startFullEncode) {
     $combinedVideoInfo = Merge-VideoInfo $SourceVideoObj $targetVideoObj
     # Show results
     Clear-Host
-    Write-Host "Preset: " $PresetFile.BaseName
-    $combinedVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
+    Write-Host "Preset: " $SelectedPreset
+    $combinedVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height", "Source Video Colour Space", "Target Video Colour Space" | Out-GridView -Title "Compare Source and Test Target properties"
     $response = Read-Host "Is the Bitrate okay? (Y/N)"
 
     if ($response -eq 'Y' -or $response -eq 'y') {
@@ -941,8 +1356,7 @@ while (-not $startFullEncode) {
     } elseif ($response -eq 'N' -or $response -eq 'n') {
         Clear-Host
         # Prompt to select a different preset
-        $SelectedPreset = Select-MenuOption -MenuOptions $PresetFiles.BaseName -MenuQuestion "Handbrake Preset"
-        $PresetFile = $PresetFiles | Where-Object { $_.BaseName -match $SelectedPreset }
+        $SelectedPreset = Select-MenuOption -MenuOptions $presetNames -MenuQuestion "Handbrake Preset"
 
         # Clean Target Folder
         $null = Remove-Item -Path $OutputFolder -Recurse -Force
@@ -973,20 +1387,25 @@ if ($startFullEncode) {
     foreach ($videoFile in $targetVideoInfo) {
         # Construct an object to hold the values
         $targetVideoObj += [PSCustomObject]@{
-            FileName                   = $($videoFile.FileName)
-            "Target FullName"          = $($videoFile.FullName)
-            "Target Codec"             = $($videoFile.VideoCodec)
-            "Target Video Width"       = $($videoFile.VideoWidth)
-            "Target Video Height"      = $($videoFile.VideoHeight)
-            "Target Video Bitrate"     = $($videoFile.VideoBitrate)
-            "Target Total Bitrate"     = $($videoFile.TotalBitrate)
-            "Target Total Raw Bitrate" = $($videoFile.RawTotalBitrate)
-            "Target Duration"          = $($videoFile.VideoDuration)
+            FileName                    = $($videoFile.FileName)
+            "Target FullName"           = $($videoFile.FullName)
+            "Target Codec"              = $($videoFile.VideoCodec)
+            "Target Video Width"        = $($videoFile.VideoWidth)
+            "Target Video Height"       = $($videoFile.VideoHeight)
+            "Target Video Colour Space" = $($videoFile.VideoColourSpace)
+            "Target Video Bitrate"      = $($videoFile.VideoBitrate)
+            "Target Total Bitrate"      = $($videoFile.TotalBitrate)
+            "Target Total Raw Bitrate"  = $($videoFile.RawTotalBitrate)
+            "Target Duration"           = $($videoFile.VideoDuration)
         }
     }
 
     if ($CopyEverything) {
-        $totalFilesToCopy = ($sourceNonVideoFiles).Count
+        if ($sourceNonVideoFiles.Count -gt 1) {
+            $totalFilesToCopy = $sourceNonVideoFiles.Count
+        } else {
+            $totalFilesToCopy = 1
+        }
         $FilesCopied = 0
         foreach ($file in $sourceNonVideoFiles) {
             <# $file is the current item #>
