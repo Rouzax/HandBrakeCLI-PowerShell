@@ -21,7 +21,7 @@ This script is designed to automate the process of converting video files using 
 ## Requirements
 
 - [HandBrakeCLI](https://handbrake.fr/downloads2.php) (Will be downloaded if out of date or not available)
-- [MediaInfo CLI](https://mediaarea.net/en/MediaInfo/Download)
+- [MediaInfo CLI](https://mediaarea.net/en/MediaInfo/Download) (Will be downloaded if out of date or not available)
 
 ## Usage
 
@@ -41,7 +41,7 @@ This script is designed to automate the process of converting video files using 
 - `PresetFile` (optional): The path to a custom HandBrake preset JSON file. If not provided, a menu will prompt you to select a preset from the available options.
 - `CopyEverything` (optional): If present, the script will copy all files from the SourceFolder to the OutputFolder.
 - `HandBrakeCliPath` (optional): The path to the HandBrakeCLI executable. If not provided, the default path will be used.
-- `MediaInfocliPath` (Optional): Path to MediaInfo CLI executable.
+- `MediaInfocliPath` (Optional): Path to MediaInfo CLI executable. If not provided, the default path will be used.
 - `TestEncode` (optional): If specified, the script will perform a test encode to check bit rates before the full conversion.
 - `TestEncodeSeconds` (optional): The duration (in seconds) of the test encode. Defaults to 120 seconds.
   
@@ -67,4 +67,4 @@ Convert video files from the ""D:\Movies\Source" folder to the "D:\Movies\Output
 
 ## Presets
 
-The script supports using custom HandBrake presets in JSON format. Place your preset files in the "Presets" folder located in the same directory as the script. When prompted to select a preset file, choose from the available options in the "Presets" folder.
+The script supports using custom HandBrake presets in JSON format. Run the script with `-PresetFile <PresetFilePath>` to the location of your presets file. It will show all available Present in that file for you to choose from. If there is only 1 preset it will automatically use that one.
