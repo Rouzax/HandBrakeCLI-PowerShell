@@ -1373,7 +1373,7 @@ if ($startFullEncode) {
     $targetVideoFiles = @()
 
     # Start the Full encodes
-    Start-HandBrakeCli -videoFiles $sourceVideoInfo -SourceFolder $SourceFolder -OutputFolder $OutputFolder -PresetFile $PresetFile -HandBrakeCliPath $HandBrakeCliPath
+    Start-HandBrakeCli -videoFiles $sourceVideoInfo -SourceFolder $SourceFolder -OutputFolder $OutputFolder -PresetFile $PresetFile -PresetName $SelectedPreset -HandBrakeCliPath $HandBrakeCliPath
 
     $FilesParams = @{
         Recurse = $true
