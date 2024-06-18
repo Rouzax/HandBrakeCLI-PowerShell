@@ -1435,7 +1435,7 @@ if ($startFullEncode) {
     $combinedVideoInfo = Merge-VideoInfo $SourceVideoObj $targetVideoObj
     # Show results
     Clear-Host
-    Write-Host "Preset: " $PresetFile.BaseName
+    Write-Host "Preset: " $SelectedPreset
     $combinedVideoInfo | Select-Object -Property FileName, "Source Codec", "Target Codec", "Source Total Bitrate", "Target Total Bitrate", 'Reduction in Bitrate %', "Source Video Width", "Source Video Height", "Target Video Width", "Target Video Height" | Out-GridView -Title "Compare Source and Test Target properties"
 }
 
