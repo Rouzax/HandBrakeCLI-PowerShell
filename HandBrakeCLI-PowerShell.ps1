@@ -1277,7 +1277,7 @@ $FilesParams = @{
 }
 $allFiles = Get-ChildItem @FilesParams
 $sourceVideoFiles = $allFiles | Where-Object { $_.Extension -match '\.({0})$' -f ($fileExtensions -join '|') }
-$sourceNonVideoFiles = $allFiles | Where-Object { $_.Extension -match '\.({0})$' -f ($fileExtensions -join '|') }
+$sourceNonVideoFiles = $allFiles | Where-Object { $_.Extension -notmatch '\.({0})$' -f ($fileExtensions -join '|') }
 
 if ($sourceVideoFiles.count -eq 0) {
     Write-Host "No video files found in location: $SourceFolder"
