@@ -1727,7 +1727,7 @@
           "PicturePadBottom": 0,
           "PicturePadLeft": 0,
           "PicturePadRight": 0,
-          "PresetDescription": "This preset is designed to create MP4 format videos with a resolution of 1280x720 (720p). It uses the x265 (HEVC) encoder with a medium preset and a Constant Rate Factor (RF) value of 25, balancing quality and file size. The encoding process is variable frame rate (VFR) for efficient compression. The color space is set to BT.709 for accurate color representation. English (eng) audio is selected and encoded using AAC at 160 kbps in stereo mixdown. Dutch (nld) subtitles are included but not burned into the video. Chapter markers are enabled for improved navigation. Upscaling is disabled to maintain source quality. Metadata passthrough is enabled to retain file information in the output.",
+          "PresetDescription": "This preset is designed to create MP4 format videos with a resolution of 1280x720 (720p). It uses the x265 (HEVC) encoder with a medium preset and a Constant Rate Factor (RF) value of 25, balancing quality and file size. The encoding process is variable frame rate (VFR) for efficient compression. The color space is set to BT.709 for accurate color representation. English (eng) audio is selected and encoded using AAC at 160 kbps in stereo mixdown. Chapter markers are enabled for improved navigation. Upscaling is disabled to maintain source quality. Metadata passthrough is enabled to retain file information in the output.",
           "PresetName": "MP4 - 720p - H265 - BT.709 - Medium RF25 - English Audio",
           "Type": 1,
           "SubtitleAddCC": false,
@@ -1736,9 +1736,7 @@
           "SubtitleBurnBehavior": "none",
           "SubtitleBurnBDSub": false,
           "SubtitleBurnDVDSub": false,
-          "SubtitleLanguageList": [
-            "nld"
-          ],
+          "SubtitleLanguageList": [],
           "SubtitleTrackSelectionBehavior": "none",
           "VideoAvgBitrate": 0,
           "VideoColorMatrixCode": 0,
