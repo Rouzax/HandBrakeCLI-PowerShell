@@ -1758,38 +1758,37 @@
           "MetadataPassthrough": false
         },
         {
-          "AlignAVStart": false,
-          "AudioCopyMask": [
-            "copy:aac",
-            "copy:ac3",
-            "copy:eac3",
-            "copy:truehd",
-            "copy:dts",
-            "copy:dtshd",
-            "copy:mp2",
-            "copy:mp3",
-            "copy:opus",
-            "copy:vorbis",
-            "copy:flac"
-          ],
-          "AudioEncoderFallback": "vorbis",
-          "AudioLanguageList": [
-            "any"
-          ],
-          "AudioList": [
-            {
-              "AudioBitrate": 160,
-              "AudioCompressionLevel": 0,
-              "AudioEncoder": "vorbis",
-              "AudioMixdown": "stereo",
-              "AudioNormalizeMixLevel": false,
-              "AudioSamplerate": "auto",
-              "AudioTrackQualityEnable": false,
-              "AudioTrackQuality": -1,
-              "AudioTrackGainSlider": 0,
-              "AudioTrackDRCSlider": 0
-            }
-          ],
+      "AlignAVStart": false,
+      "AudioCopyMask": [
+        "copy:aac",
+        "copy:ac3",
+        "copy:eac3",
+        "copy:truehd",
+        "copy:dts",
+        "copy:dtshd",
+        "copy:mp2",
+        "copy:mp3",
+        "copy:opus",
+        "copy:flac"
+      ],
+      "AudioEncoderFallback": "opus",
+      "AudioLanguageList": [
+        "any"
+      ],
+      "AudioList": [
+        {
+          "AudioBitrate": 160,
+          "AudioCompressionLevel": 0,
+          "AudioEncoder": "copy:opus",
+          "AudioMixdown": "stereo",
+          "AudioNormalizeMixLevel": false,
+          "AudioSamplerate": "auto",
+          "AudioTrackQualityEnable": false,
+          "AudioTrackQuality": 0,
+          "AudioTrackGainSlider": 0,
+          "AudioTrackDRCSlider": 0
+        }
+      ],
           "AudioSecondaryEncoderMode": true,
           "AudioTrackSelectionBehavior": "all",
           "ChapterMarkers": true,
@@ -1870,38 +1869,37 @@
           "MetadataPassthru": false
         },
         {
-          "AlignAVStart": false,
-          "AudioCopyMask": [
-            "copy:aac",
-            "copy:ac3",
-            "copy:eac3",
-            "copy:truehd",
-            "copy:dts",
-            "copy:dtshd",
-            "copy:mp2",
-            "copy:mp3",
-            "copy:opus",
-            "copy:vorbis",
-            "copy:flac"
-          ],
-          "AudioEncoderFallback": "vorbis",
-          "AudioLanguageList": [
-            "any"
-          ],
-          "AudioList": [
-            {
-              "AudioBitrate": 160,
-              "AudioCompressionLevel": 0,
-              "AudioEncoder": "vorbis",
-              "AudioMixdown": "stereo",
-              "AudioNormalizeMixLevel": false,
-              "AudioSamplerate": "auto",
-              "AudioTrackQualityEnable": false,
-              "AudioTrackQuality": -1,
-              "AudioTrackGainSlider": 0,
-              "AudioTrackDRCSlider": 0
-            }
-          ],
+      "AlignAVStart": false,
+      "AudioCopyMask": [
+        "copy:aac",
+        "copy:ac3",
+        "copy:eac3",
+        "copy:truehd",
+        "copy:dts",
+        "copy:dtshd",
+        "copy:mp2",
+        "copy:mp3",
+        "copy:opus",
+        "copy:flac"
+      ],
+      "AudioEncoderFallback": "opus",
+      "AudioLanguageList": [
+        "any"
+      ],
+      "AudioList": [
+        {
+          "AudioBitrate": 160,
+          "AudioCompressionLevel": 0,
+          "AudioEncoder": "copy:opus",
+          "AudioMixdown": "stereo",
+          "AudioNormalizeMixLevel": false,
+          "AudioSamplerate": "auto",
+          "AudioTrackQualityEnable": false,
+          "AudioTrackQuality": 0,
+          "AudioTrackGainSlider": 0,
+          "AudioTrackDRCSlider": 0
+        }
+      ],
           "AudioSecondaryEncoderMode": true,
           "AudioTrackSelectionBehavior": "all",
           "ChapterMarkers": true,
