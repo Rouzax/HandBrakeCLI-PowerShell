@@ -1350,7 +1350,8 @@
           "AudioCopyMask": [],
           "AudioEncoderFallback": "ac3",
           "AudioLanguageList": [
-            "nld"
+            "nld",
+            "eng"
           ],
           "AudioList": [
             {
@@ -1454,7 +1455,8 @@
           "AudioCopyMask": [],
           "AudioEncoderFallback": "ac3",
           "AudioLanguageList": [
-            "nld"
+            "nld",
+            "eng"
           ],
           "AudioList": [
             {
